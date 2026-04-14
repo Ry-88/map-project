@@ -1,792 +1,260 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saudi Arabia Interactive Map - With Accurate Borders</title>
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="utf-8" />
+  <title>رسم حدود منطقة مكة مع معلومات</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-        }
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-        #map {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
+  <!-- Leaflet Draw -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
-        .info-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 350px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            z-index: 1000;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
+  <style>
+    body {
+      margin: 0;
+    }
 
-        .info-header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .info-header h2 {
-            font-size: 1.5em;
-            margin-bottom: 5px;
-        }
-
-        .info-header p {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-
-        .info-content {
-            padding: 20px;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .region-details {
-            display: none;
-        }
-
-        .region-details.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .region-name {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #1e3c72;
-            margin-bottom: 10px;
-            border-bottom: 3px solid #2a5298;
-            padding-bottom: 10px;
-        }
-
-        .region-name-ar {
-            font-size: 1.5em;
-            color: #2a5298;
-            margin-bottom: 15px;
-        }
-
-        .detail-item {
-            background: #f8f9fa;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 8px;
-            border-left: 4px solid #2a5298;
-        }
-
-        .detail-label {
-            font-size: 0.85em;
-            color: #666;
-            margin-bottom: 5px;
-        }
-
-        .detail-value {
-            font-size: 1.1em;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .instructions {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .instructions h3 {
-            font-size: 1.1em;
-            margin-bottom: 8px;
-        }
-
-        .instructions p {
-            font-size: 0.9em;
-            opacity: 0.95;
-        }
-
-        .legend {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 2px solid #e0e0e0;
-        }
-
-        .legend h4 {
-            color: #1e3c72;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin: 8px 0;
-            font-size: 0.9em;
-        }
-
-        .legend-color {
-            width: 25px;
-            height: 25px;
-            border-radius: 4px;
-            margin-right: 10px;
-            border: 2px solid #333;
-        }
-
-        .logo {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: white;
-            padding: 15px 20px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-            z-index: 1000;
-        }
-
-        .logo h1 {
-            font-size: 1.5em;
-            color: #1e3c72;
-            margin-bottom: 5px;
-        }
-
-        .logo p {
-            font-size: 0.9em;
-            color: #666;
-        }
-
-        /* Leaflet popup customization */
-        .leaflet-popup-content-wrapper {
-            border-radius: 8px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        }
-
-        .leaflet-popup-content {
-            margin: 15px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .popup-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #1e3c72;
-            margin-bottom: 8px;
-        }
-
-        @media (max-width: 768px) {
-            .info-panel {
-                width: calc(100% - 40px);
-                top: auto;
-                bottom: 20px;
-                right: 20px;
-            }
-
-            .logo {
-                position: relative;
-                top: 10px;
-                left: 10px;
-                margin-bottom: 10px;
-            }
-        }
-    </style>
+    #map {
+      height: 100vh;
+    }
+  </style>
 </head>
+
 <body>
-    <div id="map"></div>
 
-    <div class="logo">
-        <h1>🗺️ Saudi Arabia Map</h1>
-        <p>Interactive Regional Explorer</p>
-    </div>
-
-    <div class="info-panel">
-        <div class="info-header">
-            <h2>خريطة المملكة العربية السعودية</h2>
-            <p>Saudi Arabia Regional Information</p>
+  <div id="map">
+    <div id="map"
+      class="leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom"
+      tabindex="0" style="position: relative; outline-style: none;">
+      <div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(-14px, -222.006px, 0px);">
+        <div class="leaflet-pane leaflet-tile-pane">
+          <div class="leaflet-layer " style="z-index: 1; opacity: 1;">
+            <div class="leaflet-tile-container leaflet-zoom-animated"
+              style="z-index: 17; transform: translate3d(822px, 565px, 0px) scale(0.5);"></div>
+            <div class="leaflet-tile-container leaflet-zoom-animated"
+              style="z-index: 18; transform: translate3d(543px, 379px, 0px) scale(1);"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1244/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(54px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1245/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(310px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1244/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(54px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1245/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(310px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1244/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(54px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1245/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(310px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1243/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-202px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1246/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(566px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1243/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-202px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1246/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(566px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1243/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-202px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1246/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(566px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1244/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(54px, -241px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1243/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-202px, -241px, 0px); opacity: 1;"><img
+                alt="" src="https://a.tile.openstreetmap.org/11/1245/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(310px, -241px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1242/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-458px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1242/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-458px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1242/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-458px, -241px, 0px); opacity: 1;"><img
+                alt="" src="https://b.tile.openstreetmap.org/11/1246/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(566px, -241px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1242/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-458px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1241/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-714px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1247/886.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(822px, 15px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1241/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-714px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1247/887.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(822px, 271px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1241/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-714px, -241px, 0px); opacity: 1;"><img
+                alt="" src="https://c.tile.openstreetmap.org/11/1247/885.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(822px, -241px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1241/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-714px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1247/888.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(822px, 527px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1244/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(54px, 783px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1243/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-202px, 783px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1245/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(310px, 783px, 0px); opacity: 1;"><img alt=""
+                src="https://b.tile.openstreetmap.org/11/1242/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-458px, 783px, 0px); opacity: 1;"><img alt=""
+                src="https://c.tile.openstreetmap.org/11/1246/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(566px, 783px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1241/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(-714px, 783px, 0px); opacity: 1;"><img alt=""
+                src="https://a.tile.openstreetmap.org/11/1247/889.png" class="leaflet-tile leaflet-tile-loaded"
+                style="width: 256px; height: 256px; transform: translate3d(822px, 783px, 0px); opacity: 1;"></div>
+          </div>
         </div>
-        <div class="info-content">
-            <div class="instructions">
-                <h3>📍 How to Use</h3>
-                <p>Click on any region on the map to view detailed information</p>
-                <p style="margin-top: 5px;">انقر على أي منطقة لعرض المعلومات</p>
-            </div>
-
-            <div id="region-info" class="region-details">
-                <!-- Region details will be inserted here -->
-            </div>
-
-            <div class="legend">
-                <h4>Saudi Arabia Regions</h4>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #e8f4f8; border-color: #006ba6;"></div>
-                    <span>Default Region</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #ffeb99; border-color: #ff6600;"></div>
-                    <span>Hovered Region</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #90ee90; border-color: #006400;"></div>
-                    <span>Selected Region</span>
-                </div>
-                <!-- <div class="legend-item">
-                    <div style="width: 25px; height: 3px; background: #000; margin-right: 10px;"></div>
-                    <span>Country Border</span>
-                </div> -->
-                <!-- <div class="legend-item">
-                    <div style="width: 25px; height: 2px; background: #666; margin-right: 10px; border-top: 2px dashed #666;"></div>
-                    <span>Region Border</span>
-                </div> -->
-            </div>
+        <div class="leaflet-pane leaflet-overlay-pane">
+          <div class="leaflet-draw-guides"></div><svg pointer-events="none" class="leaflet-zoom-animated" width="1728"
+            height="1226" viewBox="-130 120 1728 1226" style="transform: translate3d(-130px, 120px, 0px);">
+            <g>
+              <path class="leaflet-interactive" stroke="#ff7800" stroke-opacity="0.5" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round" fill="#ffb347" fill-opacity="0.5" fill-rule="evenodd"
+                d="M588 635L606 617L616 616L624 611L635 607L673 598L690 588L709 571L740 550L755 542L756 512L761 514L770 524L782 528L816 525L842 525L876 517L897 509L912 500L917 500L928 503L929 509L926 517L911 537L904 558L904 581L908 599L912 607L968 668L989 681L1000 685L1019 682L1035 674L1043 674L1055 680L1059 684L1062 691L1063 699L1061 713L1064 721L1079 727L1092 730L1095 733L1099 734L1106 744z">
+              </path>
+            </g>
+          </svg>
         </div>
+        <div class="leaflet-pane leaflet-shadow-pane"></div>
+        <div class="leaflet-pane leaflet-marker-pane"></div>
+        <div class="leaflet-pane leaflet-tooltip-pane"></div>
+        <div class="leaflet-pane leaflet-popup-pane">
+          <div class="leaflet-popup  leaflet-zoom-animated"
+            style="opacity: 1; transform: translate3d(785px, 627px, 0px); bottom: -7px; left: -125px;">
+            <div class="leaflet-popup-content-wrapper">
+              <div class="leaflet-popup-content" style="width: 203px;">
+                <h3>منطقة مكة</h3>
+                <p>يمكنك تعديل الحدود بالنقر على Edit في الأعلى.</p>
+              </div>
+            </div>
+            <div class="leaflet-popup-tip-container">
+              <div class="leaflet-popup-tip"></div>
+            </div><a class="leaflet-popup-close-button" role="button" aria-label="Close popup" href="#close"><span
+                aria-hidden="true">×</span></a>
+          </div>
+        </div>
+        <div class="leaflet-proxy leaflet-zoom-animated"
+          style="transform: translate3d(318601px, 227155px, 0px) scale(1024);"></div>
+      </div>
+      <div class="leaflet-control-container">
+        <div class="leaflet-top leaflet-left">
+          <div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="#"
+              title="Zoom in" role="button" aria-label="Zoom in" aria-disabled="false"><span
+                aria-hidden="true">+</span></a><a class="leaflet-control-zoom-out" href="#" title="Zoom out"
+              role="button" aria-label="Zoom out" aria-disabled="false"><span aria-hidden="true">−</span></a></div>
+          <div class="leaflet-draw leaflet-control">
+            <div class="leaflet-draw-section">
+              <div class="leaflet-draw-toolbar leaflet-bar leaflet-draw-toolbar-top"><a
+                  class="leaflet-draw-draw-polygon" href="#" title="Draw a polygon"><span class="sr-only">Draw a
+                    polygon</span></a></div>
+              <ul class="leaflet-draw-actions" style="top: 1px; display: none;">
+                <li class=""><a class="" href="#" title="Finish drawing">Finish</a></li>
+                <li class=""><a class="" href="#" title="Delete last point drawn">Delete last point</a></li>
+                <li class=""><a class="" href="#" title="Cancel drawing">Cancel</a></li>
+              </ul>
+            </div>
+            <div class="leaflet-draw-section">
+              <div class="leaflet-draw-toolbar leaflet-bar"><a class="leaflet-draw-edit-edit" href="#"
+                  title="Edit layers"><span class="sr-only">Edit layers</span></a><a class="leaflet-draw-edit-remove"
+                  href="#" title="Delete layers"><span class="sr-only">Delete layers</span></a></div>
+              <ul class="leaflet-draw-actions" style="top: 1px; display: none;">
+                <li class=""><a class="" href="#" title="Save changes">Save</a></li>
+                <li class=""><a class="" href="#" title="Cancel editing, discards all changes">Cancel</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="leaflet-top leaflet-right"></div>
+        <div class="leaflet-bottom leaflet-left"></div>
+        <div class="leaflet-bottom leaflet-right">
+          <div class="leaflet-control-attribution leaflet-control"><a href="https://leafletjs.com"
+              title="A JavaScript library for interactive maps"><svg aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"
+                class="leaflet-attribution-flag">
+                <path fill="#4C7BE1" d="M0 0h12v4H0z"></path>
+                <path fill="#FFD500" d="M0 4h12v3H0z"></path>
+                <path fill="#E0BC00" d="M0 7h12v1H0z"></path>
+              </svg> Leaflet</a></div>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script>
-        // Initialize the map
-        const map = L.map('map', {
-            center: [24.0, 45.0],
-            zoom: 5.5,
-            zoomControl: true,
-            attributionControl: true
-        });
+  <script>
+    // إعداد الخريطة مركز منطقة مكة
+    const map = L.map('map').setView([21.4, 39.8], 9);
 
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18,
-        }).addTo(map);
+    // إضافة الخريطة الأساسية
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+    }).addTo(map);
 
-        // Saudi Arabia country border (more accurate outline)
-        const saudiBorder = {
-            "type": "Feature",
-            "properties": {
-                "name": "Saudi Arabia",
-                "nameAr": "المملكة العربية السعودية"
-            },
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [[
-                    // Northwest corner (Jordan border)
-                    [34.95, 29.35],
-                    [35.50, 28.50],
-                    [36.20, 28.00],
-                    [36.85, 27.97],
-                    [37.47, 27.28],
-                    [37.99, 26.84],
-                    // Red Sea coast (going south)
-                    [38.50, 26.30],
-                    [38.99, 26.06],
-                    [39.26, 25.61],
-                    [39.50, 25.00],
-                    [39.81, 24.50],
-                    [40.00, 24.00],
-                    [40.50, 23.00],
-                    [40.80, 22.00],
-                    [41.20, 21.00],
-                    [41.50, 20.00],
-                    [41.80, 19.00],
-                    [42.20, 18.00],
-                    [42.50, 17.50],
-                    [42.80, 17.00],
-                    [43.00, 16.70],
-                    // Yemen border (going east)
-                    [43.50, 16.70],
-                    [44.50, 17.00],
-                    [45.50, 17.40],
-                    [46.50, 17.20],
-                    [47.50, 17.00],
-                    [48.00, 17.50],
-                    [48.50, 18.00],
-                    [49.00, 18.50],
-                    [49.50, 19.00],
-                    // Oman border (going northeast)
-                    [50.00, 19.50],
-                    [50.50, 20.50],
-                    [51.00, 22.00],
-                    [51.50, 23.50],
-                    [51.80, 24.50],
-                    [52.00, 25.50],
-                    // Arabian Gulf coast (going north)
-                    [51.90, 26.50],
-                    [51.60, 27.50],
-                    [51.00, 28.00],
-                    [50.50, 28.30],
-                    [50.00, 28.50],
-                    [49.50, 28.60],
-                    // Kuwait/Iraq border (going west)
-                    [48.50, 28.55],
-                    [47.70, 28.53],
-                    [47.00, 29.00],
-                    [46.50, 29.10],
-                    [45.50, 29.20],
-                    [44.70, 29.30],
-                    [44.00, 29.90],
-                    [43.50, 30.30],
-                    // Iraq border (going west)
-                    [42.80, 30.50],
-                    [42.35, 31.08],
-                    [41.50, 31.20],
-                    [40.40, 31.94],
-                    [39.80, 32.01],
-                    // Jordan border (going south)
-                    [39.20, 32.05],
-                    [38.79, 31.99],
-                    [38.20, 31.50],
-                    [37.60, 31.00],
-                    [37.07, 30.34],
-                    [36.74, 29.86],
-                    [36.30, 29.60],
-                    [35.80, 29.45],
-                    [35.30, 29.40],
-                    [34.95, 29.35]
-                ]]
-            }
-        };
+    // مجموعة لتخزين المناطق المرسومة
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
 
-        // Saudi Arabia regions - ALL properly contained within country border
-        const saudiRegionsData = {
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Riyadh Region",
-                        "nameAr": "منطقة الرياض",
-                        "capital": "Riyadh",
-                        "capitalAr": "الرياض",
-                        "population": "8,216,284",
-                        "area": "380,000 km²",
-                        "density": "22 per km²",
-                        "description": "The capital region and largest administrative area"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [44.00, 26.50], [47.50, 27.00], [48.00, 26.00], [48.00, 24.50],
-                            [47.00, 23.50], [46.00, 22.50], [45.00, 23.00], [44.00, 24.00],
-                            [43.50, 25.00], [44.00, 26.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Makkah Region",
-                        "nameAr": "منطقة مكة المكرمة",
-                        "capital": "Makkah",
-                        "capitalAr": "مكة المكرمة",
-                        "population": "8,557,766",
-                        "area": "153,128 km²",
-                        "density": "56 per km²",
-                        "description": "Home to the holy cities of Makkah and Jeddah"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [39.50, 24.50], [41.50, 24.50], [42.00, 23.00], [41.80, 21.00],
-                            [41.50, 20.00], [41.00, 19.50], [40.50, 19.50], [40.00, 20.00],
-                            [39.50, 21.00], [39.30, 22.50], [39.50, 24.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Eastern Province",
-                        "nameAr": "المنطقة الشرقية",
-                        "capital": "Dammam",
-                        "capitalAr": "الدمام",
-                        "population": "5,120,000",
-                        "area": "672,522 km²",
-                        "density": "8 per km²",
-                        "description": "Center of Saudi Arabia's oil industry"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [48.00, 28.40], [50.00, 28.40], [51.00, 27.50], [51.50, 26.00],
-                            [51.50, 24.00], [51.00, 22.00], [50.00, 21.00], [49.00, 21.50],
-                            [48.00, 22.50], [47.50, 24.00], [47.50, 27.00], [48.00, 28.40]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Madinah Region",
-                        "nameAr": "منطقة المدينة المنورة",
-                        "capital": "Madinah",
-                        "capitalAr": "المدينة المنورة",
-                        "population": "2,132,679",
-                        "area": "151,990 km²",
-                        "density": "14 per km²",
-                        "description": "Home to the Prophet's Mosque"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [37.50, 27.00], [39.50, 27.00], [40.50, 26.00], [41.00, 25.00],
-                            [40.50, 24.50], [39.50, 24.50], [38.50, 25.00], [37.50, 26.00],
-                            [37.50, 27.00]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Asir Region",
-                        "nameAr": "منطقة عسير",
-                        "capital": "Abha",
-                        "capitalAr": "أبها",
-                        "population": "2,211,875",
-                        "area": "76,693 km²",
-                        "density": "29 per km²",
-                        "description": "Mountainous region known for agriculture"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [41.80, 19.80], [43.50, 19.50], [43.50, 18.50], [43.00, 17.80],
-                            [42.50, 17.50], [42.00, 17.80], [41.50, 18.50], [41.50, 19.50],
-                            [41.80, 19.80]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Qassim Region",
-                        "nameAr": "منطقة القصيم",
-                        "capital": "Buraidah",
-                        "capitalAr": "بريدة",
-                        "population": "1,423,935",
-                        "area": "58,046 km²",
-                        "density": "25 per km²",
-                        "description": "Agricultural heartland of Saudi Arabia"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [41.50, 27.50], [44.00, 27.50], [44.50, 26.50], [44.00, 25.00],
-                            [42.50, 25.00], [41.50, 25.50], [41.50, 27.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Tabuk Region",
-                        "nameAr": "منطقة تبوك",
-                        "capital": "Tabuk",
-                        "capitalAr": "تبوك",
-                        "population": "910,030",
-                        "area": "146,072 km²",
-                        "density": "6 per km²",
-                        "description": "Northwestern gateway to Saudi Arabia"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [35.00, 29.30], [36.50, 29.50], [37.50, 28.80], [38.00, 28.00],
-                            [38.00, 27.00], [37.00, 27.00], [36.00, 27.50], [35.30, 28.50],
-                            [35.00, 29.30]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Hail Region",
-                        "nameAr": "منطقة حائل",
-                        "capital": "Hail",
-                        "capitalAr": "حائل",
-                        "population": "699,774",
-                        "area": "103,887 km²",
-                        "density": "7 per km²",
-                        "description": "Historic region in north-central Arabia"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [39.50, 28.50], [42.00, 28.50], [42.50, 27.50], [42.00, 26.50],
-                            [41.00, 26.00], [40.00, 26.50], [39.50, 27.50], [39.50, 28.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Northern Borders",
-                        "nameAr": "منطقة الحدود الشمالية",
-                        "capital": "Arar",
-                        "capitalAr": "عرعر",
-                        "population": "374,000",
-                        "area": "111,797 km²",
-                        "density": "3 per km²",
-                        "description": "Border region with Iraq and Jordan"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [38.50, 31.90], [41.00, 31.50], [42.00, 30.80], [42.50, 29.50],
-                            [42.00, 28.50], [40.50, 29.00], [39.50, 30.00], [38.80, 31.00],
-                            [38.50, 31.90]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Jazan Region",
-                        "nameAr": "منطقة جازان",
-                        "capital": "Jazan",
-                        "capitalAr": "جازان",
-                        "population": "1,603,000",
-                        "area": "11,671 km²",
-                        "density": "137 per km²",
-                        "description": "Coastal region on the Red Sea"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [42.30, 17.50], [43.00, 17.50], [43.00, 16.80], [42.60, 16.75],
-                            [42.30, 16.90], [42.30, 17.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Najran Region",
-                        "nameAr": "منطقة نجران",
-                        "capital": "Najran",
-                        "capitalAr": "نجران",
-                        "population": "599,000",
-                        "area": "149,511 km²",
-                        "density": "4 per km²",
-                        "description": "Southern border region near Yemen"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [43.50, 19.50], [48.00, 19.00], [48.50, 18.00], [47.50, 17.20],
-                            [45.50, 17.40], [44.50, 17.50], [43.50, 18.00], [43.50, 19.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Al-Bahah Region",
-                        "nameAr": "منطقة الباحة",
-                        "capital": "Al-Bahah",
-                        "capitalAr": "الباحة",
-                        "population": "476,172",
-                        "area": "9,921 km²",
-                        "density": "48 per km²",
-                        "description": "Mountainous region with moderate climate"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [40.80, 20.50], [41.50, 20.50], [41.80, 19.80], [41.50, 19.50],
-                            [41.00, 19.50], [40.50, 19.80], [40.80, 20.50]
-                        ]]
-                    }
-                },
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "name": "Al-Jawf Region",
-                        "nameAr": "منطقة الجوف",
-                        "capital": "Sakakah",
-                        "capitalAr": "سكاكا",
-                        "population": "508,475",
-                        "area": "100,212 km²",
-                        "density": "5 per km²",
-                        "description": "Northwestern desert region"
-                    },
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [[
-                            [37.50, 31.50], [40.00, 31.50], [40.50, 30.00], [40.00, 29.00],
-                            [38.50, 29.00], [37.50, 29.80], [37.00, 30.50], [37.50, 31.50]
-                        ]]
-                    }
-                }
-            ]
-        };
+    // أدوات الرسم والتحرير
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polygon: {
+          allowIntersection: false,
+          showArea: true,
+          shapeOptions: {
+            color: '#ff7800',
+            weight: 3,
+            fillColor: '#ffb347',
+            fillOpacity: 0.5
+          }
+        },
+        polyline: false,
+        rectangle: false,
+        circle: false,
+        marker: false,
+        circlemarker: false
+      },
+      edit: {
+        featureGroup: drawnItems,
+        remove: true
+      }
+    });
+    map.addControl(drawControl);
 
-        let currentLayer = null;
+    // عند إنشاء شكل جديد
+    map.on(L.Draw.Event.CREATED, function (event) {
+      const layer = event.layer;
 
-        // Add country border first (bottom layer)
-        const countryBorderStyle = {
-            fillColor: 'transparent',
-            weight: 4,
-            opacity: 1,
-            color: '#000000',
-            dashArray: '',
-            fillOpacity: 0
-        };
+      // أضف اسم افتراضي للمنطقة
+      layer.properties = { name: "منطقة مكة" };
 
-        L.geoJSON(saudiBorder, {
-            style: countryBorderStyle,
-            interactive: false
-        }).addTo(map);
+      // إضافة النقر لعرض معلومات
+      layer.on('click', function () {
+        const name = layer.properties.name || "منطقة مجهولة";
+        layer.bindPopup(
+          `<h3>${name}</h3>
+       <p>يمكنك تعديل الحدود بالنقر على Edit في الأعلى.</p>`
+        ).openPopup();
+      });
 
-        // Style function for regions
-        function style(feature) {
-            return {
-                fillColor: '#e8f4f8',
-                weight: 2,
-                opacity: 1,
-                color: '#006ba6',
-                dashArray: '5, 5',
-                fillOpacity: 0.6
-            };
-        }
+      drawnItems.addLayer(layer);
 
-        // Highlight feature on hover
-        function highlightFeature(e) {
-            const layer = e.target;
+      alert("تم رسم المنطقة! اضغط على الشكل لعرض المعلومات.\nGeoJSON موجود في الكونسول.");
+      console.log("GeoJSON:", layer.toGeoJSON());
+    });
 
-            layer.setStyle({
-                weight: 3,
-                color: '#ff6600',
-                dashArray: '',
-                fillOpacity: 0.7,
-                fillColor: '#ffeb99'
-            });
+    // عند تعديل أي شكل
+    map.on('draw:edited', function (event) {
+      event.layers.eachLayer(function (layer) {
+        console.log("GeoJSON بعد التعديل:", layer.toGeoJSON());
+      });
+    });
+  </script>
 
-            layer.bringToFront();
-        }
-
-        // Reset highlight
-        function resetHighlight(e) {
-            if (currentLayer !== e.target) {
-                geojson.resetStyle(e.target);
-            }
-        }
-
-        // Click handler
-        function selectFeature(e) {
-            const layer = e.target;
-            const props = layer.feature.properties;
-
-            // Reset previous selection
-            if (currentLayer) {
-                geojson.resetStyle(currentLayer);
-            }
-
-            // Highlight current selection
-            layer.setStyle({
-                fillColor: '#90ee90',
-                fillOpacity: 0.8,
-                weight: 4,
-                color: '#006400',
-                dashArray: ''
-            });
-
-            currentLayer = layer;
-
-            // Update info panel
-            const infoDiv = document.getElementById('region-info');
-            infoDiv.classList.add('active');
-            infoDiv.innerHTML = `
-                <div class="region-name">${props.name}</div>
-                <div class="region-name-ar">${props.nameAr}</div>
-                
-                <div class="detail-item">
-                    <div class="detail-label">العاصمة / Capital</div>
-                    <div class="detail-value">${props.capitalAr} / ${props.capital}</div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-label">عدد السكان / Population</div>
-                    <div class="detail-value">${props.population}</div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-label">المساحة / Area</div>
-                    <div class="detail-value">${props.area}</div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-label">الكثافة السكانية / Density</div>
-                    <div class="detail-value">${props.density}</div>
-                </div>
-                
-                <div class="detail-item">
-                    <div class="detail-label">Description</div>
-                    <div class="detail-value" style="font-size: 0.95em; font-weight: 400;">${props.description}</div>
-                </div>
-            `;
-
-            // Zoom to feature
-            map.fitBounds(layer.getBounds(), { padding: [50, 50] });
-        }
-
-        // Bind events to features
-        function onEachFeature(feature, layer) {
-            layer.on({
-                mouseover: highlightFeature,
-                mouseout: resetHighlight,
-                click: selectFeature
-            });
-
-            // Bind popup
-            layer.bindPopup(`
-                <div class="popup-title">${feature.properties.nameAr}</div>
-                <strong>${feature.properties.name}</strong><br>
-                <em>Click for more details</em>
-            `);
-        }
-
-        // Add GeoJSON layer for regions
-        const geojson = L.geoJSON(saudiRegionsData, {
-            style: style,
-            onEachFeature: onEachFeature
-        }).addTo(map);
-
-        // Fit map to show all regions
-        map.fitBounds(geojson.getBounds());
-
-    </script>
 </body>
+
 </html>
