@@ -156,12 +156,16 @@
     }
 
     path {
-      fill: #e0e0e0;
-      stroke: #fff;
-      stroke-width: 1.5;
-      cursor: pointer;
-      transition: 0.3s;
-    }
+          fill: #e0e0e0;
+          stroke: #fff;
+          stroke-width: 1.5;
+          cursor: pointer;
+          transition: 0.3s;
+            }
+            path:hover:not(.active-region):not(.hidden-region) {
+            fill: var(--accent-color);
+            stroke: var(--accent-color);
+        }
 
     .active-region {
       fill: var(--accent-color) !important;
@@ -228,14 +232,8 @@
 </head>
 
 <body>
-
-  <a href="#" class="reports-btn">الاطلاع على التقارير</a>
-
-  <div class="container d-flex justify-content-center">
-    <div class="div-image text-center " style="width: 250px;">
-      <img src="logo2.png" class="img-fluid" alt="logo">
-    </div>
-  </div>
+    <div id="navbar-placeholder"></div>
+    <a href="#" class="reports-btn">الاطلاع على التقارير</a>
 
   <div class="main-wrapper">
     <div class="info-panel">
@@ -462,7 +460,14 @@
       document.getElementById('regionDetail').style.display = 'none';
       resetMapBtn.style.display = 'none';
     });
+    fetch('navbar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('navbar-placeholder').innerHTML = data;
+            })
+            .catch(error => console.error('خطأ في تحميل الناف بار:', error));
   </script>
+  
 </body>
 
 </html>
