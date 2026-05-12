@@ -156,16 +156,17 @@
     }
 
     path {
-          fill: #e0e0e0;
-          stroke: #fff;
-          stroke-width: 1.5;
-          cursor: pointer;
-          transition: 0.3s;
-            }
-            path:hover:not(.active-region):not(.hidden-region) {
-            fill: var(--accent-color);
-            stroke: var(--accent-color);
-        }
+      fill: #e0e0e0;
+      stroke: #fff;
+      stroke-width: 1.5;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    path:hover:not(.active-region):not(.hidden-region) {
+      fill: var(--accent-color);
+      stroke: var(--accent-color);
+    }
 
     .active-region {
       fill: var(--accent-color) !important;
@@ -225,32 +226,37 @@
       font-weight: 600;
       color: #222748;
     }
+
     /* منع النقر، الهفر، وتغيير شكل الماوس */
-.no-click {
-    pointer-events: none; /* هذا السطر يلغي أي تفاعل للماوس تماماً */
-    cursor: default !important;
-    fill: #c4c4c4
-}
+    .no-click {
+      pointer-events: none;
+      /* هذا السطر يلغي أي تفاعل للماوس تماماً */
+      cursor: default !important;
+      fill: #c4c4c4
+    }
 
-/* اختياري: تغيير لون المناطق غير القابلة للضغط لتمييزها */
-.no-click:hover {
-    fill: #c4c4c4 !important; /* يبقى لونها ثابت حتى لو مر الماوس عليها */
-}
+    /* اختياري: تغيير لون المناطق غير القابلة للضغط لتمييزها */
+    .no-click:hover {
+      fill: #c4c4c4 !important;
+      /* يبقى لونها ثابت حتى لو مر الماوس عليها */
+    }
 
-/* كلاس يخلي النص مايتحدد */
-.region-label {
-    pointer-events: none; 
-    user-select: none;    /* يمنع المستخدم من تحديد النص بالخطأ */
-    cursor: default;      /* عشان ما تظهر علامة مؤشر الكتابة */
-}
+    /* كلاس يخلي النص مايتحدد */
+    .region-label {
+      pointer-events: none;
+      user-select: none;
+      /* يمنع المستخدم من تحديد النص بالخطأ */
+      cursor: default;
+      /* عشان ما تظهر علامة مؤشر الكتابة */
+    }
   </style>
 </head>
 
 <body>
-    <div id="navbar-placeholder"></div>
-    <a href="#" class="reports-btn">الاطلاع على التقارير</a>
+  <div id="navbar-placeholder"></div>
+  <a href="#" class="reports-btn">الاطلاع على التقارير</a>
 
-  
+
 
   <div class="main-wrapper">
     <div class="info-panel">
@@ -330,15 +336,9 @@
         </g>
 
         <!-- Arabic region name labels -->
-        <g id="map-labels"
-           font-family="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
-           font-weight="bold"
-           text-anchor="middle"
-           paint-order="stroke"
-           stroke="rgba(255,255,255,0.9)"
-           stroke-width="3.5"
-           stroke-linejoin="round"
-           fill="#222748">
+        <g id="map-labels" font-family="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" font-weight="bold"
+          text-anchor="middle" paint-order="stroke" stroke="rgba(255,255,255,0.9)" stroke-width="3.5"
+          stroke-linejoin="round" fill="#222748">
 
           <!-- الرياض -->
           <text class="region-label" x="518" y="448" font-size="20">الرياض</text>
@@ -546,12 +546,13 @@
       mapLabels.style.display = 'block';
     });
     fetch('navbar.html')
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('navbar-placeholder').innerHTML = data;
-            })
-            .catch(error => console.error('خطأ في تحميل الناف بار:', error));
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('navbar-placeholder').innerHTML = data;
+      })
+      .catch(error => console.error('خطأ في تحميل الناف بار:', error));
   </script>
-  
+
 </body>
+
 </html>
