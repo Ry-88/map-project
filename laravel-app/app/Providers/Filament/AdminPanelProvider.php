@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(Login::class)
-            ->brandName('')
+            ->brandName('خريطة حرس الحدود')
             ->colors([
                 'primary' => Color::Amber,
             ])

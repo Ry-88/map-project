@@ -9,7 +9,7 @@ class Login extends BaseLogin
 {
     public function getHeading(): string
     {
-        return 'Welcome Back 👋';
+        return 'لوحة التحكم';
     }
 
     public function getSubheading(): ?string
