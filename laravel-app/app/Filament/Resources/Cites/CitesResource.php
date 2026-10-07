@@ -13,6 +13,12 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use App\Filament\Resources\Cites\RelationManagers\RepeaterStationsRelationManager;
+use App\Filament\Resources\Cites\RelationManagers\AntennasRelationManager;
+use App\Filament\Resources\Cites\RelationManagers\DevicesRelationManager;
+use App\Filament\Resources\Cites\RelationManagers\CentralsRelationManager;
+use App\Filament\Resources\Cites\RelationManagers\FiberOpticsRelationManager;
+use App\Filament\Resources\Cites\RelationManagers\WorkshopsRelationManager;
 
 class CitesResource extends Resource
 {
@@ -28,6 +34,18 @@ class CitesResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function getRelations(): array
+    {
+        return [
+            RepeaterStationsRelationManager::class,
+            AntennasRelationManager::class,
+            DevicesRelationManager::class,
+            CentralsRelationManager::class,
+            FiberOpticsRelationManager::class,
+            WorkshopsRelationManager::class,
+        ];
+    }
+
     public static function form(Schema $schema): Schema
     {
         return CitesForm::configure($schema);
@@ -36,13 +54,6 @@ class CitesResource extends Resource
     public static function table(Table $table): Table
     {
         return CitesTable::configure($table);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
     }
 
     public static function getPages(): array
