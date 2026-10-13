@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasAssetInfo;
 
 class Central extends Model
 {
+    use HasAssetInfo;
+    
     protected $fillable = [
         'region_id', 'type', 'version', 'analog_count', 'digital_count',
         'direct_count', 'ac_units', 'batteries', 'ups',

@@ -12,6 +12,10 @@ use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use App\Enums\AssetStatus;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\ImageColumn;
 
 class CentralsRelationManager extends RelationManager
 {
@@ -34,6 +38,26 @@ class CentralsRelationManager extends RelationManager
             TextInput::make('external_capacity')->label('سعة خارجية')->numeric()->default(0),
             TextInput::make('internal_capacity')->label('سعة داخلية')->numeric()->default(0),
             TextInput::make('central_capacity')->label('سعة السنترال')->numeric()->default(0),
+
+
+                Select::make('status')
+                    ->label('الحالة')
+                    ->options(AssetStatus::class)
+                    ->placeholder('غير محدد')
+                    ->nullable(),
+
+                TextInput::make('serial_number')
+                    ->label('الرقم التسلسلي')
+                    ->maxLength(255)
+                    ->nullable(),
+
+                FileUpload::make('image')
+                    ->label('الصورة')
+                    ->image()
+                    ->disk('public')
+                    ->directory('assets')
+                    ->imageEditor()
+                    ->nullable(),
         ]);
     }
 
@@ -45,6 +69,21 @@ class CentralsRelationManager extends RelationManager
                 TextColumn::make('type')->label('النوع'),
                 TextColumn::make('version')->label('الإصدار'),
                 TextColumn::make('location')->label('الموقع'),
+
+                ImageColumn::make('image')
+                    ->label('الصورة')
+                    ->disk('public')
+                    ->square(),
+
+                TextColumn::make('serial_number')
+                    ->label('الرقم التسلسلي')
+                    ->placeholder('—')
+                    ->searchable(),
+
+                TextColumn::make('status')
+                    ->label('الحالة')
+                    ->badge()
+                    ->placeholder('غير محدد'),
             ])
             ->headerActions([CreateAction::make()])
             ->recordActions([EditAction::make(), DeleteAction::make()])

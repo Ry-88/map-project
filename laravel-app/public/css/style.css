@@ -386,3 +386,11 @@
       .dv-search input { width: 100%; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+    .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; color: #fff; }
+    .status-active { background: #2ecc71; }
+    .status-faulty { background: #e5484d; }
+    .status-maintenance { background: #d8901d; }
+    .status-retired { background: #888; }
+    .status-none { background: #bbb; }
+    .asset-thumb { width: 34px; height: 34px; object-fit: cover; border-radius: 6px; cursor: pointer; }

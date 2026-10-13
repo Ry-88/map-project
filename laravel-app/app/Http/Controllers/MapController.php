@@ -163,24 +163,40 @@ class MapController extends Controller
                 'ext'     => $central->external_capacity,
                 'int'     => $central->internal_capacity,
                 'cap'     => $central->central_capacity,
+                'status'        => $central->status?->value,
+                'status_label'  => $central->status?->getLabel(),
+                'serial_number' => $central->serial_number,
+                'image'         => $central->image_url,
             ])->values(),
 
             'repeaters' => $city->repeaterStations->map(fn($station) => [
                 'item'  => $station->type,
                 'count' => $station->count,
                 'loc'   => $station->location,
+                'status'        => $station->status?->value,
+                'status_label'  => $station->status?->getLabel(),
+                'serial_number' => $station->serial_number,
+                'image'         => $station->image_url,
             ])->values(),
 
             'antennas' => $city->antennas->map(fn($antenna) => [
                 'item'  => $antenna->type,
                 'count' => $antenna->count,
                 'loc'   => $antenna->location,
+                'status'        => $antenna->status?->value,
+                'status_label'  => $antenna->status?->getLabel(),
+                'serial_number' => $antenna->serial_number,
+                'image'         => $antenna->image_url,
             ])->values(),
 
             'devices' => $city->devices->map(fn($device) => [
                 'item'  => $device->type,
                 'count' => $device->count,
                 'loc'   => $device->location,
+                'status'        => $device->status?->value,
+                'status_label'  => $device->status?->getLabel(),
+                'serial_number' => $device->serial_number,
+                'image'         => $device->image_url,
             ])->values(),
 
             'fiberOptics' => $city->fiberOptics->map(fn($fiber) => [

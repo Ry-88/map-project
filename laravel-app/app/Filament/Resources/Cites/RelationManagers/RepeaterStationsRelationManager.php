@@ -12,6 +12,10 @@ use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
+use App\Enums\AssetStatus;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\ImageColumn;
 
 class RepeaterStationsRelationManager extends RelationManager
 {
@@ -25,6 +29,26 @@ class RepeaterStationsRelationManager extends RelationManager
             TextInput::make('type')->label('النوع')->maxLength(255)->required(),
             TextInput::make('count')->label('العدد')->numeric()->required(),
             TextInput::make('location')->label('الموقع')->maxLength(255)->required(),
+
+
+                Select::make('status')
+                    ->label('الحالة')
+                    ->options(AssetStatus::class)
+                    ->placeholder('غير محدد')
+                    ->nullable(),
+
+                TextInput::make('serial_number')
+                    ->label('الرقم التسلسلي')
+                    ->maxLength(255)
+                    ->nullable(),
+
+                FileUpload::make('image')
+                    ->label('الصورة')
+                    ->image()
+                    ->disk('public')
+                    ->directory('assets')
+                    ->imageEditor()
+                    ->nullable(),
         ]);
     }
 
@@ -35,6 +59,21 @@ class RepeaterStationsRelationManager extends RelationManager
                 TextColumn::make('count')->label('العدد'),
                 TextColumn::make('type')->label('النوع'),
                 TextColumn::make('location')->label('الموقع'),
+
+                ImageColumn::make('image')
+                    ->label('الصورة')
+                    ->disk('public')
+                    ->square(),
+
+                TextColumn::make('serial_number')
+                    ->label('الرقم التسلسلي')
+                    ->placeholder('—')
+                    ->searchable(),
+
+                TextColumn::make('status')
+                    ->label('الحالة')
+                    ->badge()
+                    ->placeholder('غير محدد'),
             ])
             ->headerActions([
                 CreateAction::make(),
