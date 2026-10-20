@@ -60,19 +60,26 @@
         <div class="top-tools">
             <div class="clock"><b id="clockTime">--:--:--</b><span id="clockDate"></span></div>
             <div class="pill"><i class="dot"></i>النظام يعمل</div>
-            <a href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
-                <svg viewBox="0 0 24 24">
-                    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                    <path d="M14 3v6h6M8 13h8M8 17h5" />
-                </svg>
-                تقرير جميع المناطق
-            </a>
-            <button id="logoutBtn" class="logout-btn btn-top">
-                <svg viewBox="0 0 24 24">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-                </svg>
-                تسجيل الخروج
-            </button>
+            @if(auth()->user()->isAdmin())
+                <a href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                        <path d="M14 3v6h6M8 13h8M8 17h5" />
+                    </svg>
+                    تقرير جميع المناطق
+                </a>
+
+            @endif
+            <form action="{{ route('logout') }}" method="POST" >
+                @csrf
+                <button type="submit"  class="logout-btn btn-top">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                    </svg>
+                    تسجيل الخروج
+                </button>
+
+            </form>
         </div>
     </header>
 
@@ -157,12 +164,14 @@
                     </button>
 
                     {{-- زر تقرير المنطقة (كان downloadReportBtn في الكود القديم) --}}
-                    <a id="downloadReportBtn" class="action-btn report-link" href="#">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 3v12M7 11l5 5 5-5M5 21h14" />
-                        </svg>
-                        <span style="flex:none">تحميل تقرير المنطقة</span>
-                    </a>
+                    @if(auth()->user()->isAdmin())
+                        <a id="downloadReportBtn" class="action-btn report-link" href="#">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 3v12M7 11l5 5 5-5M5 21h14" />
+                            </svg>
+                            <span style="flex:none">تحميل تقرير المنطقة</span>
+                        </a>
+                    @endif
                 </div>
             </div>
         </aside>
@@ -323,11 +332,11 @@
 
     <script>
         /* ===================================================================
-           0) مواءمة معرّفات المناطق
-           مسارات SVG في التصميم الجديد لها معرّفات مختلفة عن الكود القديم،
-           وبيانات الداتابيز مفهرسة بالمعرّفات القديمة، لذلك نحوّلها هنا.
-           (إن لصقت مسارات SVG من الملف القديم بدل الجديد فاجعل الخيار false)
-           =================================================================== */
+               0) مواءمة معرّفات المناطق
+               مسارات SVG في التصميم الجديد لها معرّفات مختلفة عن الكود القديم،
+               وبيانات الداتابيز مفهرسة بالمعرّفات القديمة، لذلك نحوّلها هنا.
+               (إن لصقت مسارات SVG من الملف القديم بدل الجديد فاجعل الخيار false)
+               =================================================================== */
         const SVG_FROM_NEW_DESIGN = true;
         const NEW_TO_OLD_ID = {
             SA08: 'SA09', // الحدود الشمالية
@@ -447,7 +456,7 @@
         const CHEVRON = '<svg class="sep" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"></polyline></svg>';
 
         function updateCrumbs() {
-            const parts = ['المملكة'];
+            const parts = ['مرحبا {{ Auth::user()->name }}'];   
             if (currentRegionId) parts.push(regionNames[currentRegionId]);
             if (currentRegionId && dataView.style.display === 'flex' && currentCategory) parts.push(CAT_TITLES[
                 currentCategory]);
@@ -519,14 +528,14 @@
                 `onclick="loadRegionalData('${cat}')" onkeydown="if(event.key==='Enter')loadRegionalData('${cat}')" role="button" tabindex="0" title="عرض الجدول"` :
                 '';
             return `<div class="kpi ${big ? 'kpi-big' : ''} ${cat ? 'is-link' : ''}" style="--c:${c}" ${click}>
-    <svg viewBox="0 0 100 100" width="${size}" height="${size}">
-      <circle cx="50" cy="50" r="47" class="kpi-ticks"/>
-      <circle cx="50" cy="50" r="38" class="kpi-track"/>
-      <circle cx="50" cy="50" r="38" class="kpi-bar" stroke="${c}"
-        stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}"
-        data-offset="${CIRC * (1 - v / 100)}" transform="rotate(-90 50 50)"/>
-      <text x="50" y="50" class="kpi-val"><tspan class="n" data-v="${v}">0</tspan><tspan class="kpi-pct" dx="1">%</tspan></text>
-    </svg><span class="kpi-label">${label}</span></div>`;
+        <svg viewBox="0 0 100 100" width="${size}" height="${size}">
+        <circle cx="50" cy="50" r="47" class="kpi-ticks"/>
+        <circle cx="50" cy="50" r="38" class="kpi-track"/>
+        <circle cx="50" cy="50" r="38" class="kpi-bar" stroke="${c}"
+            stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}"
+            data-offset="${CIRC * (1 - v / 100)}" transform="rotate(-90 50 50)"/>
+        <text x="50" y="50" class="kpi-val"><tspan class="n" data-v="${v}">0</tspan><tspan class="kpi-pct" dx="1">%</tspan></text>
+        </svg><span class="kpi-label">${label}</span></div>`;
         }
 
         function animateKpis(el) {
@@ -788,91 +797,91 @@
         }
 
         function calcTotal(category, data) {
-    if (!Array.isArray(data)) return 0;
-    switch (category) {
-        case 'workshops':
-            return data.reduce((s, r) =>
-                s + (Number(r.engineers_count) || 0) + (Number(r.technicians_count) || 0), 0);
-        case 'exchanges':
-            return data.filter(r => r.type).length;
-        case 'devices':
-            return data.length;
-        default: // repeaters / antennas / fiberOptics
-            return data.reduce((s, r) => s + (Number(r.count) || 0), 0);
-    }
-}
+            if (!Array.isArray(data)) return 0;
+            switch (category) {
+                case 'workshops':
+                    return data.reduce((s, r) =>
+                        s + (Number(r.engineers_count) || 0) + (Number(r.technicians_count) || 0), 0);
+                case 'exchanges':
+                    return data.filter(r => r.type).length;
+                case 'devices':
+                    return data.length;
+                default: // repeaters / antennas / fiberOptics
+                    return data.reduce((s, r) => s + (Number(r.count) || 0), 0);
+            }
+        }
 
         function loadRegionalData(category) {
-    if (!currentRegionId) return;
-    const data = regionalDataStore[currentRegionId]?.[category] || [];
-    currentCategory = category;
-    hideTip();
+            if (!currentRegionId) return;
+            const data = regionalDataStore[currentRegionId]?.[category] || [];
+            currentCategory = category;
+            hideTip();
 
-    mapStage.classList.add('hidden-element');
-    dataView.style.display = 'flex';
-    $('dvTitle').textContent = CAT_TITLES[category];
-    $('dvCount').textContent = data.length + ' سجل';
-    $('dvTotal').textContent = 'الإجمالي: ' + calcTotal(category, data);
-    $('dvSearch').value = '';
-    mapTitle.innerText = regionNames[currentRegionId];
-    document.querySelectorAll('.action-btn[data-cat]').forEach(b => b.classList.toggle('is-active', b.dataset
-        .cat === category));
-    updateCrumbs();
+            mapStage.classList.add('hidden-element');
+            dataView.style.display = 'flex';
+            $('dvTitle').textContent = CAT_TITLES[category];
+            $('dvCount').textContent = data.length + ' سجل';
+            $('dvTotal').textContent = 'الإجمالي: ' + calcTotal(category, data);
+            $('dvSearch').value = '';
+            mapTitle.innerText = regionNames[currentRegionId];
+            document.querySelectorAll('.action-btn[data-cat]').forEach(b => b.classList.toggle('is-active', b.dataset
+                .cat === category));
+            updateCrumbs();
 
-    if (category === 'devices') {
-        dataTableContainer.style.display = 'none';
-        renderDevices(data);
-        return;
-    }
-    devicesContainer.style.display = 'none';
-    dataTableContainer.style.display = 'block';
+            if (category === 'devices') {
+                dataTableContainer.style.display = 'none';
+                renderDevices(data);
+                return;
+            }
+            devicesContainer.style.display = 'none';
+            dataTableContainer.style.display = 'block';
 
-    if (category === 'exchanges') {
-        tableHeader.innerHTML =
-            `<tr><th>النوع</th><th>الإصدار</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
-        tableBody.innerHTML = data.length ?
-            data.map(row => `<tr>
+            if (category === 'exchanges') {
+                tableHeader.innerHTML =
+                    `<tr><th>النوع</th><th>الإصدار</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
+                tableBody.innerHTML = data.length ?
+                    data.map(row => `<tr>
                 <td>${esc(row.type)}</td><td>${esc(row.sw)}</td><td>${esc(row.location)}</td>
                 ${assetCells(row)}
             </tr>`).join('') :
-            emptyRow(6);
+                    emptyRow(6);
 
-    } else if (category === 'workshops') {
-        tableHeader.innerHTML = `<tr><th>اسم الورشة</th><th>الموقع</th><th>عدد الموظفين</th><th>التفاصيل</th></tr>`;
-        tableBody.innerHTML = data.length ?
-            data.map((row, i) => `<tr>
+            } else if (category === 'workshops') {
+                tableHeader.innerHTML = `<tr><th>اسم الورشة</th><th>الموقع</th><th>عدد الموظفين</th><th>التفاصيل</th></tr>`;
+                tableBody.innerHTML = data.length ?
+                    data.map((row, i) => `<tr>
                 <td>${esc(row.name)}</td>
                 <td>${esc(row.location)}</td>
                 <td>${(Number(row.engineers_count) || 0) + (Number(row.technicians_count) || 0)}</td>
                 <td><button class="expand-btn" onclick="toggleDetail(this, ${i})">التفاصيل</button></td>
             </tr>`).join('') :
-            emptyRow(4);
+                    emptyRow(4);
 
-    } else if (ASSET_CATS.includes(category)) {
-        // محطات الإعادة والهوائيات
-        tableHeader.innerHTML =
-            `<tr><th>النوع</th><th>العدد</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
-        tableBody.innerHTML = data.length ?
-            data.map(row => `<tr>
+            } else if (ASSET_CATS.includes(category)) {
+                // محطات الإعادة والهوائيات
+                tableHeader.innerHTML =
+                    `<tr><th>النوع</th><th>العدد</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
+                tableBody.innerHTML = data.length ?
+                    data.map(row => `<tr>
                 <td>${esc(row.item)}</td>
                 <td>${esc(row.count)}</td>
                 <td>${esc(row.loc ?? row.location)}</td>
                 ${assetCells(row)}
             </tr>`).join('') :
-            emptyRow(6);
+                    emptyRow(6);
 
-    } else {
-        // الألياف البصرية: بدون الحقول الجديدة (لم نضف لها أعمدة)
-        tableHeader.innerHTML = `<tr><th>النوع</th><th>العدد</th><th>الموقع</th></tr>`;
-        tableBody.innerHTML = data.length ?
-            data.map(row => `<tr>
+            } else {
+                // الألياف البصرية: بدون الحقول الجديدة (لم نضف لها أعمدة)
+                tableHeader.innerHTML = `<tr><th>النوع</th><th>العدد</th><th>الموقع</th></tr>`;
+                tableBody.innerHTML = data.length ?
+                    data.map(row => `<tr>
                 <td>${esc(row.item)}</td>
                 <td>${esc(row.count)}</td>
                 <td>${esc(row.loc ?? row.location)}</td>
             </tr>`).join('') :
-            emptyRow(3);
-    }
-}
+                    emptyRow(3);
+            }
+        }
 
         /* ===================================================================
            7) بطاقات الأجهزة وملحقاتها
@@ -883,29 +892,29 @@
         <circle cx="12" cy="13" r="3"/></svg>`;
 
         const STATUS_COLORS = {
-    active: '#2ee6a6',
-    faulty: '#ff5c6c',
-    maintenance: '#ffb224',
-    retired: '#8890b5'
-};
+            active: '#2ee6a6',
+            faulty: '#ff5c6c',
+            maintenance: '#ffb224',
+            retired: '#8890b5'
+        };
 
-function renderDevices(data) {
-    const cards = data.map(d => {
-        const name = d.name ?? d.item ?? '—';
-        const location = d.location ?? d.loc ?? '—';
-        const serial = d.serial_number ?? d.serial ?? '—';
-        const hasReadiness = d.readiness !== null && d.readiness !== undefined && d.readiness !== '';
-        const pct = hasReadiness ? Math.max(0, Math.min(100, Number(d.readiness) || 0)) : null;
+        function renderDevices(data) {
+            const cards = data.map(d => {
+                const name = d.name ?? d.item ?? '—';
+                const location = d.location ?? d.loc ?? '—';
+                const serial = d.serial_number ?? d.serial ?? '—';
+                const hasReadiness = d.readiness !== null && d.readiness !== undefined && d.readiness !== '';
+                const pct = hasReadiness ? Math.max(0, Math.min(100, Number(d.readiness) || 0)) : null;
 
-        // اللون: الحالة المحددة أولاً، ثم الجاهزية، ثم رمادي
-        const color = STATUS_COLORS[d.status] || (pct !== null ? kpiColor(pct) : '#8890b5');
-        const badge = d.status_label || (pct !== null ? statusOf(pct).t : 'غير محدد');
+                // اللون: الحالة المحددة أولاً، ثم الجاهزية، ثم رمادي
+                const color = STATUS_COLORS[d.status] || (pct !== null ? kpiColor(pct) : '#8890b5');
+                const badge = d.status_label || (pct !== null ? statusOf(pct).t : 'غير محدد');
 
-        const accessories = Array.isArray(d.accessories) ?
-            d.accessories :
-            (d.accessories ? String(d.accessories).split(',') : []);
+                const accessories = Array.isArray(d.accessories) ?
+                    d.accessories :
+                    (d.accessories ? String(d.accessories).split(',') : []);
 
-        return `
+                return `
         <div class="device-card" style="border-top-color:${color}">
           <div class="device-img">
             ${DEVICE_PLACEHOLDER}
@@ -915,30 +924,30 @@ function renderDevices(data) {
           <div class="device-body">
             <h4 class="device-title">${esc(name)}</h4>
             <div class="device-info">
-              <div><span>الموديل</span><span>${esc(d.model || '—')}</span></div>
+
               <div><span>الرقم التسلسلي</span><span>${esc(serial)}</span></div>
               <div><span>الموقع</span><span>${esc(location)}</span></div>
               ${d.count != null ? `<div><span>العدد</span><span>${esc(d.count)}</span></div>` : ''}
-              <div><span>آخر صيانة</span><span>${esc(d.last_maintenance || '—')}</span></div>
             </div>
             ${accessories.length ? `<div class="device-chips">${accessories.map(a => `<small>${esc(String(a).trim())}</small>`).join('')}</div>` : ''}
             ${pct !== null ? `
-            <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
-            <div class="device-ready-track">
-              <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
-            </div>` : ''}
+                <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
+                <div class="device-ready-track">
+                  <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
+                </div>` : ''}
           </div>
         </div>`;
-    }).join('');
+            }).join('');
 
-    devicesContainer.innerHTML = data.length ?
-        `<div class="devices-grid">${cards}</div>` :
-        '<p class="dv-empty">لا توجد أجهزة مسجّلة لهذه المنطقة حتى الآن</p>';
-    devicesContainer.style.display = 'block';
+            devicesContainer.innerHTML = data.length ?
+                `<div class="devices-grid">${cards}</div>` :
+                '<p class="dv-empty">لا توجد أجهزة مسجّلة لهذه المنطقة حتى الآن</p>';
+            devicesContainer.style.display = 'block';
 
-    requestAnimationFrame(() => requestAnimationFrame(() =>
-        devicesContainer.querySelectorAll('.device-ready-bar').forEach(b => b.style.width = b.dataset.w + '%')));
-}
+            requestAnimationFrame(() => requestAnimationFrame(() =>
+                devicesContainer.querySelectorAll('.device-ready-bar').forEach(b => b.style.width = b.dataset.w +
+                    '%')));
+        }
 
         /* ---- البحث داخل الجدول / البطاقات ---- */
         $('dvSearch').addEventListener('input', e => {
@@ -1097,20 +1106,21 @@ function renderDevices(data) {
         /* ===================================================================
            10) تسجيل الخروج (Laravel + CSRF كما في الكود القديم)
            =================================================================== */
-        $('logoutBtn').addEventListener('click', async () => {
-            try {
-                await fetch('/logout', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                });
-            } catch (err) {
-                /* نكمل الخروج حتى لو السيرفر ما رد */ }
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.replace('/');
-        });
+        // $('logoutBtn').addEventListener('click', async () => {
+        //     try {
+        //         await fetch('/logout', {
+        //             method: 'POST',
+        //             headers: {
+        //                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        //             }
+        //         });
+        //     } catch (err) {
+        //         /* نكمل الخروج حتى لو السيرفر ما رد */
+        //     }
+        //     localStorage.clear();
+        //     sessionStorage.clear();
+        //     window.location.replace('/');
+        // });
 
         /* ===================================================================
            11) التشغيل
