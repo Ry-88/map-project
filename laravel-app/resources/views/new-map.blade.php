@@ -55,12 +55,19 @@
             </div>
         </div>
 
-        <nav class="crumbs" id="crumbs" aria-label="مسار التنقل"></nav>
+        <nav class="crumbs" id="crumbs" aria-label="مسار التنقل">
+
+        </nav>
 
         <div class="top-tools">
             <div class="clock"><b id="clockTime">--:--:--</b><span id="clockDate"></span></div>
             <div class="pill"><i class="dot"></i>النظام يعمل</div>
             @if(auth()->user()->isAdmin())
+                <a href="{{ url('/admin') }}" target="_blank" class="reports-btn btn-top">
+                    
+                   لوحة التحكم
+                </a>
+
                 <a href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
                     <svg viewBox="0 0 24 24">
                         <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
@@ -456,7 +463,7 @@
         const CHEVRON = '<svg class="sep" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"></polyline></svg>';
 
         function updateCrumbs() {
-            const parts = ['مرحبا {{ Auth::user()->name }}'];   
+            const parts = ['مرحبا {{ Auth::user()->name }}'];
             if (currentRegionId) parts.push(regionNames[currentRegionId]);
             if (currentRegionId && dataView.style.display === 'flex' && currentCategory) parts.push(CAT_TITLES[
                 currentCategory]);
