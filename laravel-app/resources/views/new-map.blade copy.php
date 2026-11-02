@@ -18,7 +18,7 @@
             padding: 20px;
             overflow-x: hidden;
         }
-
+ 
         .logo {
             width: 150px;
             height: 150px;
