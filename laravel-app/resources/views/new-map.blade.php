@@ -62,10 +62,10 @@
         <div class="top-tools">
             <div class="clock"><b id="clockTime">--:--:--</b><span id="clockDate"></span></div>
             <div class="pill"><i class="dot"></i>النظام يعمل</div>
-            @if(auth()->user()->isAdmin())
+            @if (auth()->user()->isAdmin())
                 <a href="{{ url('/admin') }}" target="_blank" class="reports-btn btn-top">
-                    
-                   لوحة التحكم
+
+                    لوحة التحكم
                 </a>
 
                 <a href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
@@ -75,11 +75,10 @@
                     </svg>
                     تقرير جميع المناطق
                 </a>
-
             @endif
-            <form action="{{ route('logout') }}" method="POST" >
+            <form action="{{ route('logout') }}" method="POST">
                 @csrf
-                <button type="submit"  class="logout-btn btn-top">
+                <button type="submit" class="logout-btn btn-top">
                     <svg viewBox="0 0 24 24">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
                     </svg>
@@ -107,7 +106,8 @@
                     <h2>مناطق المملكة</h2>
                     <span class="stamp" id="stamp"></span>
                 </div>
-                <p class="sub">اختر منطقة من الخريطة لعرض البيانات.</p>
+                <p class="sub">العرض الحالي: <b id="modeName" style="color:var(--text)">عامة</b>. اختر منطقة من
+                    الخريطة لعرض البيانات.</p>
                 <div id="overallKpi" class="kpi-overall"></div>
                 <div id="statusStrip" class="status-strip"></div>
                 <div id="nationalKpis" class="kpi-grid"></div>
@@ -119,59 +119,13 @@
                     <span class="region-code" id="regionCode"></span>
                 </div>
                 <div id="regionOverall"></div>
-                <p class="hint">اختر التصنيف لعرض الجدول:</p>
+                <p class="hint" id="regionHint">اختر التصنيف لعرض الجدول:</p>
                 <div id="regionKpis" class="kpi-grid"></div>
 
                 <div class="info-actions">
-                    <button class="action-btn" data-cat="repeaters" onclick="loadRegionalData('repeaters')">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 12v9M8 21h8M9 21l3-9 3 9" />
-                            <circle cx="12" cy="9" r="1.5" />
-                            <path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7" />
-                        </svg>
-                        <span>محطات الإعادة</span><em></em>
-                    </button>
-                    <button class="action-btn" data-cat="antennas" onclick="loadRegionalData('antennas')">
-                        <svg viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="2" />
-                            <path
-                                d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19a10 10 0 0 1 0-14" />
-                        </svg>
-                        <span>الهوائيات</span><em></em>
-                    </button>
-                    <button class="action-btn" data-cat="devices" onclick="loadRegionalData('devices')">
-                        <svg viewBox="0 0 24 24">
-                            <rect x="6" y="8" width="12" height="13" rx="2" />
-                            <path d="M10 8l4-5M9 12h6M9 16h3" />
-                        </svg>
-                        <span>الأجهزة وملحقاتها</span><em></em>
-                    </button>
-                    <button class="action-btn" data-cat="exchanges" onclick="loadRegionalData('exchanges')">
-                        <svg viewBox="0 0 24 24">
-                            <rect x="3" y="4" width="18" height="6" rx="1.5" />
-                            <rect x="3" y="14" width="18" height="6" rx="1.5" />
-                            <path d="M7 7h.01M7 17h.01" />
-                        </svg>
-                        <span>السنترالات</span><em></em>
-                    </button>
-                    <button class="action-btn" data-cat="fiberOptics" onclick="loadRegionalData('fiberOptics')">
-                        <svg viewBox="0 0 24 24">
-                            <circle cx="3.5" cy="17" r="1.2" />
-                            <circle cx="20.5" cy="17" r="1.2" />
-                            <path d="M4.5 17c4 0 4-10 7.5-10s3.500 10 7.500 10" />
-                        </svg>
-                        <span>الألياف البصرية</span><em></em>
-                    </button>
-                    <button class="action-btn" data-cat="workshops" onclick="loadRegionalData('workshops')">
-                        <svg viewBox="0 0 24 24">
-                            <path
-                                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                        </svg>
-                        <span>الورش والطاقم الفني</span><em></em>
-                    </button>
+                    <div id="infoActions" style="display:contents"></div>
 
-                    {{-- زر تقرير المنطقة (كان downloadReportBtn في الكود القديم) --}}
-                    @if(auth()->user()->isAdmin())
+                    @if (auth()->user()->isAdmin())
                         <a id="downloadReportBtn" class="action-btn report-link" href="#">
                             <svg viewBox="0 0 24 24">
                                 <path d="M12 3v12M7 11l5 5 5-5M5 21h14" />
@@ -188,6 +142,28 @@
                 <div>
                     <h3 id="mapTitle">خريطة المناطق الإدارية</h3>
                     <p id="mapSub">اضغط على أي منطقة لتكبيرها وعرض بياناتها</p>
+                </div>
+                <div class="seg" id="modeSwitch" role="tablist" aria-label="نوع العرض">
+
+                    <button class="seg-btn is-active" role="tab" aria-selected="true" data-mode="general">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                        عامة
+                    </button>
+                    <button class="seg-btn" role="tab" aria-selected="false" data-mode="comms">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="2" />
+                            <path
+                                d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19a10 10 0 0 1 0-14" />
+                        </svg>
+                        الاتصالات
+                    </button>
+                    <button class="seg-btn" role="tab" aria-selected="false" data-mode="security">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
+                            <path d="M9 12l2 2 4-4" />
+                        </svg>
+                        الأنظمة الأمنية
+                    </button>
                 </div>
                 <div class="legend">
                     <span><i class="l-ok"></i>جاهز (80% فأكثر)</span>
@@ -360,37 +336,33 @@
         }
 
         /* ===================================================================
-           1) البيانات من الداتابيز (كما في الكود القديم)
+           1) البيانات من الداتابيز
+           ---- الاتصالات (موجودة سابقاً) ----
+           $regionalDataStore : بيانات جداول الاتصالات (كما كانت)
+           $kpiStore          : { SA01: [6 أرقام], ... } بترتيب COMMS_CATS
+           ---- الأنظمة الأمنية (جديدة، اختيارية) ----
+           $securityDataStore : { SA01: { cameras:[...], alarms:[...], access:[...] }, ... }
+           $securityKpiStore  : { SA01: [3 أرقام], ... } بترتيب SEC_CATS
+           أي متغير غير ممرَّر من الكنترولر تُستخدم له قيمة بديلة (أرقام تجريبية / جداول فارغة).
+
            شكل الصفوف المتوقع:
-             exchanges   : {type, sw, location}
-             repeaters / antennas / fiberOptics : {item, count, loc}
+             exchanges   : {type, sw, location, serial_number, status, status_label, image}
+             repeaters / antennas : {item, count, loc, serial_number, status, status_label, image}
+             fiberOptics : {item, count, loc}
              workshops   : {name, location, engineers[], technicians[], engineers_count, technicians_count}
              devices     : {name, model, serial, location, last_maintenance, readiness, status, image, accessories}
+             cameras / alarms / access : {item, count, loc} (+ الحقول الاختيارية serial_number/status/image)
            =================================================================== */
-        const regionalDataStore = @json($regionalDataStore);
+        const hasKeys = o => !!o && typeof o === 'object' && Object.keys(o).length > 0;
 
-        const KPI_CATS = [
-            ['repeaters', 'محطات الإعادة'],
-            ['antennas', 'الهوائيات'],
-            ['devices', 'الأجهزة'],
-            ['exchanges', 'السنترالات'],
-            ['fiberOptics', 'الألياف'],
-            ['workshops', 'الورش']
-        ];
-        const CAT_TITLES = {
-            repeaters: 'محطات الإعادة',
-            antennas: 'الهوائيات',
-            devices: 'الأجهزة وملحقاتها',
-            exchanges: 'السنترالات',
-            fiberOptics: 'الألياف البصرية',
-            workshops: 'الورش والطاقم الفني'
-        };
+        const commsData = @json($regionalDataStore);
+        const securityDataRaw = @json($securityDataStore ?? null);
+        const securityData = hasKeys(securityDataRaw) ? securityDataRaw : {};
 
-        /* نسب الجاهزية بنفس ترتيب KPI_CATS.
-           لحسابها من الداتابيز مرّر $kpiStore من الكنترولر بنفس الشكل { SA01: [6 أرقام], ... }
-           وإلا تُستخدم هذه الأرقام التجريبية كما في كودك القديم. */
-        const kpiFromServer = @json($kpiStore ?? null);
-        const kpiStore = kpiFromServer || {
+        const commsKpiRaw = @json($kpiStore ?? null);
+        const securityKpiRaw = @json($securityKpiStore ?? null);
+
+        const commsKpi = hasKeys(commsKpiRaw) ? commsKpiRaw : {
             SA01: [92, 88, 76, 84, 95, 90],
             SA02: [85, 79, 68, 81, 88, 83],
             SA03: [78, 72, 64, 75, 82, 77],
@@ -402,12 +374,132 @@
             SA13: [58, 52, 44, 55, 64, 56],
             SA06: [80, 75, 70, 77, 84, 79]
         };
+        const securityKpi = hasKeys(securityKpiRaw) ? securityKpiRaw : {
+            SA01: [88, 84, 90],
+            SA02: [80, 83, 71],
+            SA03: [70, 76, 66],
+            SA04: [93, 91, 87],
+            SA07: [71, 64, 58],
+            SA09: [60, 57, 50],
+            SA10: [68, 73, 63],
+            SA11: [67, 61, 54],
+            SA13: [64, 59, 52],
+            SA06: [77, 79, 73]
+        };
+
+        const ICONS = {
+            tower: '<path d="M12 12v9M8 21h8M9 21l3-9 3 9" /><circle cx="12" cy="9" r="1.5" /><path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7" />',
+            antenna: '<circle cx="12" cy="12" r="2" /><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19a10 10 0 0 1 0-14" />',
+            device: '<rect x="6" y="8" width="12" height="13" rx="2" /><path d="M10 8l4-5M9 12h6M9 16h3" />',
+            exchange: '<rect x="3" y="4" width="18" height="6" rx="1.5" /><rect x="3" y="14" width="18" height="6" rx="1.5" /><path d="M7 7h.01M7 17h.01" />',
+            fiber: '<circle cx="3.5" cy="17" r="1.2" /><circle cx="20.5" cy="17" r="1.2" /><path d="M4.5 17c4 0 4-10 7.5-10s3.5 10 7.5 10" />',
+            wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />',
+            camera: '<path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M15 11l6-3v8l-6-3" />',
+            bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />',
+            lock: '<rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />'
+        };
+
+        /* تصنيفات كل وضع: key = مفتاح البيانات، label = اسم المؤشر، title = عنوان الزر والجدول.
+           الترتيب هنا = ترتيب الأرقام في KPI لنفس الوضع. */
+        const COMMS_CATS = [{
+                key: 'repeaters',
+                label: 'محطات الإعادة',
+                title: 'محطات الإعادة',
+                icon: 'tower'
+            },
+            {
+                key: 'antennas',
+                label: 'الهوائيات',
+                title: 'الهوائيات',
+                icon: 'antenna'
+            },
+            {
+                key: 'devices',
+                label: 'الأجهزة',
+                title: 'الأجهزة وملحقاتها',
+                icon: 'device'
+            },
+            {
+                key: 'exchanges',
+                label: 'السنترالات',
+                title: 'السنترالات',
+                icon: 'exchange'
+            },
+            {
+                key: 'fiberOptics',
+                label: 'الألياف',
+                title: 'الألياف البصرية',
+                icon: 'fiber'
+            },
+            {
+                key: 'workshops',
+                label: 'الورش',
+                title: 'الورش والطاقم الفني',
+                icon: 'wrench'
+            }
+        ];
+        const SEC_CATS = [{
+                key: 'cameras',
+                label: 'الكاميرات',
+                title: 'ساجم',
+                icon: 'camera'
+            },
+            {
+                key: 'alarms',
+                label: 'الإنذار',
+                title: 'زالي',
+                icon: 'bell'
+            },
+            {
+                key: 'access',
+                label: 'التحكم بالدخول',
+                title: 'فلير',
+                icon: 'lock'
+            }
+        ];
+        // الوضع العام: مؤشران فقط (الاتصالات + الأنظمة الأمنية)
+        const GENERAL_SYSTEMS = [
+            ['comms', 'الاتصالات'],
+            ['security', 'الأنظمة الأمنية']
+        ];
+
+        const MODES = {
+            general: {
+                title: 'عامة',
+                cats: [],
+                kpi: {},
+                data: {},
+                sweep: 'rgba(244,180,69,.16)'
+            },
+            comms: {
+                title: 'الاتصالات',
+                cats: COMMS_CATS,
+                kpi: commsKpi,
+                data: commsData,
+                sweep: 'rgba(76,201,240,.2)'
+            },
+            security: {
+                title: 'الأنظمة الأمنية',
+                cats: SEC_CATS,
+                kpi: securityKpi,
+                data: securityData,
+                sweep: 'rgba(255,92,108,.18)'
+            }
+        };
+
+        // تتغير حسب الوضع (تُضبط في setMode)
+        let KPI_CATS = [];
+        let CAT_TITLES = {};
+        let CURRENT_CATS = [];
+        let kpiStore = MODES.general.kpi;
+        let regionalDataStore = MODES.general.data;
 
         /* ===================================================================
            2) عناصر الصفحة والحالة
            =================================================================== */
         const $ = id => document.getElementById(id);
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const USER_NAME = @json(Auth::user()->name);
 
         const svgMap = $('saudiMap');
         const resetMapBtn = $('resetMapBtn');
@@ -427,6 +519,8 @@
 
         let currentRegionId = null;
         let currentCategory = null;
+        let currentMode = 'general';
+        let booted = false;
 
         const regionNames = {};
         paths.forEach(p => {
@@ -454,16 +548,50 @@
             t: 'حرج'
         };
         const kpiColor = v => v >= 80 ? '#2ee6a6' : v >= 60 ? '#ffb224' : '#ff5c6c';
-        const regionAvg = id => {
-            const r = kpiStore[id];
-            return r ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null;
+        const rawAvg = r => r && r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null;
+        const mean = a => a.length ? Math.round(a.reduce((s, v) => s + v, 0) / a.length) : 0;
+
+        // متوسط وضع معيّن بحسب عدد التصنيفات المفعّلة فقط (يتجاهل الأرقام الزائدة)
+        const modeAvg = (m, id) => {
+            const a = MODES[m].kpi[id];
+            return a ? rawAvg(a.slice(0, MODES[m].cats.length)) : null;
         };
+        // في الوضع العام: جاهزية المنطقة = متوسط (الاتصالات + الأنظمة الأمنية)
+        const regionAvg = id => {
+            if (currentMode === 'general') {
+                const vals = ['comms', 'security'].map(m => modeAvg(m, id)).filter(v => v != null);
+                return vals.length ? mean(vals) : null;
+            }
+            return rawAvg((kpiStore[id] || []).slice(0, KPI_CATS.length));
+        };
+        // معرّفات المناطق التي لها بيانات في الوضع الحالي
+        const regionIds = () => currentMode === 'general' ? [...new Set([...Object.keys(MODES.comms.kpi), ...Object.keys(
+                MODES.security.kpi)])] :
+            Object.keys(kpiStore);
+
         const CIRC = 2 * Math.PI * 38;
+
+        // عدد وحدات الـ SVG لكل بكسل: لتثبيت حجم النقاط والنصوص مهما كان حجم الشاشة
+        const ppu = () => Math.min(mapStage.clientWidth / 1000, mapStage.clientHeight / 824) || .8;
+
+        function fitLabels() {
+            const w = mapStage.clientWidth || 800;
+            const k = Math.min(2, Math.max(1, 620 / w));
+            mapLabels.querySelectorAll('text').forEach(t => {
+                if (!t.dataset.fs) t.dataset.fs = t.getAttribute('font-size');
+                t.style.fontSize = (t.dataset.fs * k) + 'px';
+                t.querySelectorAll('tspan[dy]').forEach(sp => {
+                    if (!sp.dataset.dy) sp.dataset.dy = sp.getAttribute('dy');
+                    sp.setAttribute('dy', sp.dataset.dy * k);
+                });
+            });
+            mapLabels.style.strokeWidth = (3.5 * k) + 'px';
+        }
 
         const CHEVRON = '<svg class="sep" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"></polyline></svg>';
 
         function updateCrumbs() {
-            const parts = ['مرحبا {{ Auth::user()->name }}'];
+            const parts = ['مرحبا ' + USER_NAME];
             if (currentRegionId) parts.push(regionNames[currentRegionId]);
             if (currentRegionId && dataView.style.display === 'flex' && currentCategory) parts.push(CAT_TITLES[
                 currentCategory]);
@@ -528,13 +656,16 @@
 
         /* ===================================================================
            4) المؤشرات الدائرية
+           action: كود جافاسكربت يُنفَّذ عند الضغط (مثل setMode('comms')) بدل فتح جدول
            =================================================================== */
-        function gaugeHTML(v, label, cat, size, big) {
+        function gaugeHTML(v, label, cat, size, big, action) {
             const c = kpiColor(v);
-            const click = cat ?
+            const click = action ?
+                `onclick="${action}" onkeydown="if(event.key==='Enter'){${action}}" role="button" tabindex="0" title="عرض التفاصيل"` :
+                cat ?
                 `onclick="loadRegionalData('${cat}')" onkeydown="if(event.key==='Enter')loadRegionalData('${cat}')" role="button" tabindex="0" title="عرض الجدول"` :
                 '';
-            return `<div class="kpi ${big ? 'kpi-big' : ''} ${cat ? 'is-link' : ''}" style="--c:${c}" ${click}>
+            return `<div class="kpi ${big ? 'kpi-big' : ''} ${cat || action ? 'is-link' : ''}" style="--c:${c}" ${click}>
         <svg viewBox="0 0 100 100" width="${size}" height="${size}">
         <circle cx="50" cy="50" r="47" class="kpi-ticks"/>
         <circle cx="50" cy="50" r="38" class="kpi-track"/>
@@ -566,33 +697,80 @@
         }
 
         function renderKpis(el, values, size, clickable) {
-            el.innerHTML = KPI_CATS.map((c, i) => gaugeHTML(values[i], c[1], clickable ? c[0] : null, size)).join('');
+            el.innerHTML = KPI_CATS.map((c, i) => gaugeHTML(values[i] ?? 0, c[1], clickable ? c[0] : null, size)).join('');
             animateKpis(el);
         }
 
         function renderNationalKpis() {
-            const rows = Object.values(kpiStore);
-            const avg = KPI_CATS.map((_, i) => Math.round(rows.reduce((s, r) => s + r[i], 0) / rows.length));
-            const total = Math.round(avg.reduce((a, b) => a + b, 0) / avg.length);
+            const general = currentMode === 'general';
+            const avg = general ?
+                GENERAL_SYSTEMS.map(([m]) => mean(regionIds().map(id => modeAvg(m, id)).filter(v => v != null))) :
+                KPI_CATS.map((_, i) => mean(Object.values(kpiStore).map(r => r[i]).filter(v => typeof v === 'number')));
+            const total = mean(avg);
+
             const overall = $('overallKpi');
             overall.innerHTML = gaugeHTML(total, 'الجاهزية العامة', null, 150, true);
             animateKpis(overall);
-            renderKpis($('nationalKpis'), avg, 78, false);
+
+            const el = $('nationalKpis');
+            if (general) {
+                // الوضع العام: مؤشران، والضغط على أيٍّ منهما ينقلك لوضعه
+                el.className = 'kpi-grid kpi-duo';
+                el.innerHTML = KPI_CATS.map((c, i) =>
+                    gaugeHTML(avg[i], c[1], null, 96, false, `setMode('${c[0]}')`)).join('');
+                animateKpis(el);
+            } else {
+                el.className = 'kpi-grid';
+                renderKpis(el, avg, 78, false);
+            }
 
             const cnt = {
                 ok: 0,
                 mid: 0,
                 crit: 0
             };
-            Object.keys(kpiStore).forEach(id => cnt[statusOf(regionAvg(id)).k]++);
+            regionIds().forEach(id => {
+                const v = regionAvg(id);
+                if (v != null) cnt[statusOf(v).k]++;
+            });
             $('statusStrip').innerHTML = `
         <div class="st ok"><b>${cnt.ok}</b><span>مناطق جاهزة</span></div>
         <div class="st mid"><b>${cnt.mid}</b><span>تحتاج متابعة</span></div>
         <div class="st crit"><b>${cnt.crit}</b><span>مناطق حرجة</span></div>`;
         }
 
+        // أزرار التصنيفات في لوحة المنطقة (تتغير حسب الوضع)
+        function renderActions() {
+            $('infoActions').innerHTML = CURRENT_CATS.map(c => `
+        <button class="action-btn" data-cat="${c.key}" onclick="loadRegionalData('${c.key}')">
+          <svg viewBox="0 0 24 24">${ICONS[c.icon] || ''}</svg><span>${c.title}</span><em></em>
+        </button>`).join('');
+        }
+
+        function renderRegionPanel(id) {
+            renderRegionHead(id);
+            const general = currentMode === 'general';
+            // نخفي أزرار التصنيفات فقط (زر تقرير المنطقة يبقى ظاهراً)
+            $('infoActions').style.display = general ? 'none' : 'contents';
+            $('regionHint').textContent = general ? 'اضغط على النظام لعرض تفاصيله:' : 'اختر التصنيف لعرض الجدول:';
+            const el = $('regionKpis');
+            if (general) {
+                el.className = 'kpi-grid kpi-duo';
+                el.innerHTML =
+                    gaugeHTML(modeAvg('comms', id) || 0, 'الاتصالات', null, 96, false, "setMode('comms')") +
+                    gaugeHTML(modeAvg('security', id) || 0, 'الأنظمة الأمنية', null, 96, false, "setMode('security')");
+                animateKpis(el);
+            } else {
+                el.className = 'kpi-grid';
+                renderKpis(el, kpiStore[id] || [], 74, true);
+            }
+        }
+
         function renderRegionHead(id) {
-            const vals = kpiStore[id] || [0, 0, 0, 0, 0, 0];
+            const general = currentMode === 'general';
+            const vals = general ? [modeAvg('comms', id) || 0, modeAvg('security', id) || 0] :
+                KPI_CATS.map((_, i) => (kpiStore[id] || [])[i] ?? 0);
+            const names = KPI_CATS.map(c => c[1]);
             const avg = regionAvg(id) || 0;
             const s = statusOf(avg);
             const weak = vals.indexOf(Math.min(...vals));
@@ -600,7 +778,7 @@
         ${gaugeHTML(avg, 'الجاهزية العامة', null, 108, true)}
         <div class="hero-text">
           <span class="chip ${s.k}">${s.t}</span>
-          <p>أدنى مؤشر في المنطقة:<br><b>${KPI_CATS[weak][1]}</b> بنسبة <b>${vals[weak]}%</b></p>
+          <p>أدنى مؤشر في المنطقة:<br><b>${esc(names[weak])}</b> بنسبة <b>${vals[weak]}%</b></p>
         </div></div>`;
             animateKpis($('regionOverall'));
             $('regionCode').textContent = id;
@@ -642,7 +820,8 @@
         };
 
         function buildNationalNet() {
-            const hq = HUBS.SA01;
+            const hq = HUBS.SA01,
+                u = 1 / ppu();
             let lines = '',
                 nodes = '';
             Object.entries(HUBS).forEach(([id, [x, y]]) => {
@@ -660,12 +839,13 @@
                 }
                 if (id === 'SA01') {
                     nodes +=
-                        `<circle class="ping hub" cx="${x}" cy="${y}" r="7"/><circle class="node hub ok" cx="${x}" cy="${y}" r="8"/>`;
+                        `<circle class="ping hub" cx="${x}" cy="${y}" r="${(6.5 * u).toFixed(1)}"/><circle class="node hub ok" cx="${x}" cy="${y}" r="${(7.5 * u).toFixed(1)}"/>`;
                 } else if (col) {
-                    nodes += (col === 'crit' ? `<circle class="ping crit" cx="${x}" cy="${y}" r="5"/>` : '') +
-                        `<circle class="node ${col}" cx="${x}" cy="${y}" r="5"/>`;
+                    nodes += (col === 'crit' ?
+                            `<circle class="ping crit" cx="${x}" cy="${y}" r="${(5 * u).toFixed(1)}"/>` : '') +
+                        `<circle class="node ${col}" cx="${x}" cy="${y}" r="${(5 * u).toFixed(1)}"/>`;
                 } else {
-                    nodes += `<circle class="node off" cx="${x}" cy="${y}" r="4"/>`;
+                    nodes += `<circle class="node off" cx="${x}" cy="${y}" r="${(4 * u).toFixed(1)}"/>`;
                 }
             });
             netNational.innerHTML = lines + nodes;
@@ -675,6 +855,7 @@
             const id = path.id,
                 bb = path.getBBox(),
                 rnd = mulberry32(hash(id)),
+                rnd2 = mulberry32(hash(id + currentMode)), // حالات النقاط تتغير حسب الوضع
                 v = regionAvg(id) || 60;
             const pts = [],
                 pt = svgMap.createSVGPoint(),
@@ -698,7 +879,7 @@
                 cy = bb.y + bb.height / 2;
             pts.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
             pts.forEach((p, i) => {
-                const r = rnd() * 100;
+                const r = rnd2() * 100;
                 p.hub = i === 0;
                 p.s = p.hub ? 'ok' : r < v - 8 ? 'ok' : r < v + 18 ? 'mid' : 'crit';
             });
@@ -722,7 +903,10 @@
                     });
             });
 
-            const R = Math.min(7, Math.max(3.2, Math.max(bb.width, bb.height) / 95));
+            // حجم النقاط يتكيّف مع مستوى التكبير وحجم الشاشة
+            const sc = Math.min((mapStage.clientWidth || 800) / (bb.width + 80), (mapStage.clientHeight || 600) / (bb
+                .height + 80)) || 1;
+            const R = Math.min(16, Math.max(3, 6.5 / sc));
             const labels = {
                 ok: 'جاهزة',
                 mid: 'تحتاج متابعة',
@@ -813,13 +997,14 @@
                     return data.filter(r => r.type).length;
                 case 'devices':
                     return data.length;
-                default: // repeaters / antennas / fiberOptics
+                default: // repeaters / antennas / fiberOptics / الأنظمة الأمنية
                     return data.reduce((s, r) => s + (Number(r.count) || 0), 0);
             }
         }
 
         function loadRegionalData(category) {
-            if (!currentRegionId) return;
+            // الوضع العام لا يعرض جداول (الضغط على المؤشر ينقل لوضع الاتصالات/الأمنية)
+            if (!currentRegionId || currentMode === 'general') return;
             const data = regionalDataStore[currentRegionId]?.[category] || [];
             currentCategory = category;
             hideTip();
@@ -864,8 +1049,9 @@
             </tr>`).join('') :
                     emptyRow(4);
 
-            } else if (ASSET_CATS.includes(category)) {
-                // محطات الإعادة والهوائيات
+            } else if (ASSET_CATS.includes(category) ||
+                (category !== 'fiberOptics' && data.some(r => r.serial_number || r.status))) {
+                // محطات الإعادة والهوائيات (+ جداول الأنظمة الأمنية إذا كانت سجلاتها فيها رقم تسلسلي/حالة)
                 tableHeader.innerHTML =
                     `<tr><th>النوع</th><th>العدد</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
                 tableBody.innerHTML = data.length ?
@@ -878,7 +1064,7 @@
                     emptyRow(6);
 
             } else {
-                // الألياف البصرية: بدون الحقول الجديدة (لم نضف لها أعمدة)
+                // الألياف البصرية + جداول الأنظمة الأمنية البسيطة: نوع / عدد / موقع
                 tableHeader.innerHTML = `<tr><th>النوع</th><th>العدد</th><th>الموقع</th></tr>`;
                 tableBody.innerHTML = data.length ?
                     data.map(row => `<tr>
@@ -938,10 +1124,10 @@
             </div>
             ${accessories.length ? `<div class="device-chips">${accessories.map(a => `<small>${esc(String(a).trim())}</small>`).join('')}</div>` : ''}
             ${pct !== null ? `
-                <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
-                <div class="device-ready-track">
-                  <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
-                </div>` : ''}
+                    <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
+                    <div class="device-ready-track">
+                      <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
+                    </div>` : ''}
           </div>
         </div>`;
             }).join('');
@@ -998,7 +1184,9 @@
                 const bbox = this.getBBox();
                 currentRegionId = this.id;
                 currentCategory = null;
-                $('downloadReportBtn').href = `/region/${currentRegionId}/report`;
+                // زر التقرير يظهر للأدمن فقط، لذلك نتأكد من وجوده قبل تعيين الرابط
+                const reportBtn = $('downloadReportBtn');
+                if (reportBtn) reportBtn.href = `/region/${currentRegionId}/report`;
                 setViewBox([bbox.x - 40, bbox.y - 40, bbox.width + 80, bbox.height + 80], 750);
                 paths.forEach(p => {
                     p.classList.add('hidden-region');
@@ -1013,8 +1201,7 @@
                 $('regionDetail').style.display = 'flex';
                 $('regionName').innerText = this.getAttribute('name');
                 resetMapBtn.style.display = 'flex';
-                renderRegionHead(this.id);
-                renderKpis($('regionKpis'), kpiStore[this.id] || [0, 0, 0, 0, 0, 0], 74, true);
+                renderRegionPanel(this.id);
                 dataView.style.display = 'none';
                 mapStage.classList.remove('hidden-element');
 
@@ -1052,6 +1239,9 @@
             hideTip();
         });
         svgMap.addEventListener('pointerleave', hideTip);
+        svgMap.addEventListener('pointerup', e => {
+            if (e.pointerType === 'touch') setTimeout(hideTip, 1800);
+        });
 
         function resetAll() {
             setViewBox([0, 0, 1000, 824], 650);
@@ -1086,16 +1276,24 @@
         });
 
         /* ===================================================================
-           9) شريط التنبيهات (يُبنى تلقائياً من kpiStore)
+           9) شريط التنبيهات (يُبنى تلقائياً من مؤشرات الوضع الحالي)
+           معطّل حالياً لأن الـ footer معلّق في الأعلى؛ يشتغل تلقائياً إذا فككت التعليق.
            =================================================================== */
         function buildTicker() {
+            const track = $('tickerTrack');
+            if (!track) return;
+            const sources = currentMode === 'general' ? ['comms', 'security'] : [currentMode];
             const items = [];
-            Object.keys(kpiStore).forEach(id => {
-                kpiStore[id].forEach((v, i) => {
-                    if (v < 70 && regionNames[id]) items.push({
-                        id,
-                        v,
-                        cat: KPI_CATS[i][1]
+            sources.forEach(m => {
+                const cats = MODES[m].cats;
+                Object.keys(MODES[m].kpi).forEach(id => {
+                    if (!regionNames[id]) return;
+                    MODES[m].kpi[id].slice(0, cats.length).forEach((v, i) => {
+                        if (v < 70) items.push({
+                            id,
+                            v,
+                            cat: cats[i].label
+                        });
                     });
                 });
             });
@@ -1103,41 +1301,79 @@
             const top = items.slice(0, 14);
             const html = top.map(o => {
                 const k = o.v < 60 ? 'crit' : 'mid';
-                return `<span class="ti ${k}"><i></i>${k === 'crit' ? 'حرج' : 'متابعة'}: ${o.cat} في ${esc(regionNames[o.id])} <b>${o.v}%</b></span>`;
+                return `<span class="ti ${k}"><i></i>${k === 'crit' ? 'حرج' : 'متابعة'}: ${esc(o.cat)} في ${esc(regionNames[o.id])} <b>${o.v}%</b></span>`;
             }).join('');
-            const track = $('tickerTrack');
             track.innerHTML = html + html;
             track.style.animationDuration = Math.max(40, top.length * 7) + 's';
         }
 
         /* ===================================================================
-           10) تسجيل الخروج (Laravel + CSRF كما في الكود القديم)
+           10) تسجيل الخروج: يتم عبر فورم Laravel + CSRF في الأعلى (لا يحتاج جافاسكربت)
            =================================================================== */
-        // $('logoutBtn').addEventListener('click', async () => {
-        //     try {
-        //         await fetch('/logout', {
-        //             method: 'POST',
-        //             headers: {
-        //                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        //             }
-        //         });
-        //     } catch (err) {
-        //         /* نكمل الخروج حتى لو السيرفر ما رد */
-        //     }
-        //     localStorage.clear();
-        //     sessionStorage.clear();
-        //     window.location.replace('/');
-        // });
 
         /* ===================================================================
-           11) التشغيل
+           11) أوضاع العرض (عامة / الاتصالات / الأنظمة الأمنية) + التشغيل
            =================================================================== */
-        buildNationalNet();
-        buildTicker();
-        updateCrumbs();
+        function setMode(key) {
+            if (!MODES[key]) return;
+            currentMode = key;
+            kpiStore = MODES[key].kpi;
+            regionalDataStore = MODES[key].data;
+            CURRENT_CATS = MODES[key].cats;
+            KPI_CATS = key === 'general' ? GENERAL_SYSTEMS : CURRENT_CATS.map(c => [c.key, c.label]);
+            CAT_TITLES = Object.fromEntries(CURRENT_CATS.map(c => [c.key, c.title]));
+            renderActions();
+
+            document.querySelectorAll('.seg-btn').forEach(b => {
+                const on = b.dataset.mode === key;
+                b.classList.toggle('is-active', on);
+                b.setAttribute('aria-selected', on);
+            });
+            $('modeName').textContent = MODES[key].title;
+            mapStage.style.setProperty('--sw', MODES[key].sweep);
+
+            document.querySelectorAll('#features path.region').forEach(p => {
+                const v = regionAvg(p.id);
+                if (v != null) p.style.setProperty('--rc', kpiColor(v));
+                else p.style.removeProperty('--rc');
+            });
+            buildNationalNet();
+            buildTicker();
+            if (booted) renderNationalKpis();
+
+            if (currentRegionId) {
+                renderRegionPanel(currentRegionId);
+                buildRegionMesh(document.getElementById(currentRegionId));
+                if (dataView.style.display === 'flex') {
+                    if (key === 'general') showRegionMap();
+                    else if (currentCategory && CAT_TITLES[currentCategory]) loadRegionalData(currentCategory);
+                    else showRegionMap();
+                }
+            }
+            hideTip();
+            updateCrumbs();
+        }
+
+        $('modeSwitch').addEventListener('click', e => {
+            const b = e.target.closest('.seg-btn');
+            if (b) setMode(b.dataset.mode);
+        });
+
+        setMode('general');
+        fitLabels();
+
+        let rzTimer;
+        addEventListener('resize', () => {
+            clearTimeout(rzTimer);
+            rzTimer = setTimeout(() => {
+                fitLabels();
+                if (mapStage.classList.contains('hidden-element')) return;
+                buildNationalNet();
+                if (currentRegionId) buildRegionMesh(document.getElementById(currentRegionId));
+            }, 150);
+        });
 
         const boot = $('boot');
-        let booted = false;
 
         function finishBoot() {
             if (booted) return;
