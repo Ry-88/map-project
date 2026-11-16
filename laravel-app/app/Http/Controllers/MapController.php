@@ -108,6 +108,7 @@ class MapController extends Controller
 
         $data = $this->buildRegionData($city);
         $data['regionName'] = $city->name;
+        $data['kpi'] = $this->commsKpi($data);
 
         $html = view('reports.region-report', $data)->render();
 
@@ -160,10 +161,21 @@ class MapController extends Controller
         $regions = $cities->map(function ($city) {
             $data = $this->buildRegionData($city);
             $data['regionName'] = $city->name;
+            $data['kpi'] = $this->commsKpi($data);  // ← جديد
             return $data;
         });
 
-        $html = view('reports.all-regions-report', compact('regions'))->render();
+        // مؤشرات على مستوى المملكة
+        $groups = [];
+        foreach (['exchanges', 'repeaters', 'antennas', 'devices', 'fiberOptics', 'workshops'] as $k) {
+            $groups[$k] = $regions->flatMap(fn($r) => $r[$k])->values()->all();
+        }
+        $national = $this->commsKpi($groups, 85, 120);
+        $national['ready'] = $regions->filter(fn($r) => $r['kpi']['readiness'] !== null && $r['kpi']['readiness'] >= 80)->count();
+        $national['mid']   = $regions->filter(fn($r) => $r['kpi']['readiness'] !== null && $r['kpi']['readiness'] >= 60 && $r['kpi']['readiness'] < 80)->count();
+        $national['crit']  = $regions->filter(fn($r) => $r['kpi']['readiness'] !== null && $r['kpi']['readiness'] < 60)->count();
+
+        $html = view('reports.all-regions-report', compact('regions', 'national'))->render();
 
         $defaultConfig = (new ConfigVariables())->getDefaults();
         $fontDirs = $defaultConfig['fontDir'];
@@ -272,77 +284,214 @@ class MapController extends Controller
     }
 
     public function downloadSecurityReport($regionId)
-        {
-            $city = City::with(['cameras', 'alarms', 'accessControls'])
-                ->where('code', $regionId)
-                ->firstOrFail();
+    {
+        $city = City::with(['cameras', 'alarms', 'accessControls'])
+            ->where('code', $regionId)
+            ->firstOrFail();
 
-            $region = $this->securityReportData($city);
+        $region = $this->securityReportData($city);
 
-            $html = view('reports.security-region-report', compact('region'))->render();
+        $html = view('reports.security-region-report', compact('region'))->render();
 
-            return $this->pdfSecurity($html, "تقرير-الأنظمة-الأمنية-{$city->name}.pdf");
+        return $this->pdfSecurity($html, "تقرير-الأنظمة-الأمنية-{$city->name}.pdf");
+    }
+
+    public function downloadAllSecurityReport()
+    {
+        $regions = City::with(['cameras', 'alarms', 'accessControls'])
+            ->get()
+            ->map(fn($city) => $this->securityReportData($city));
+
+        // مؤشرات على مستوى المملكة
+        $groups = [];
+        foreach (['cameras', 'alarms', 'access'] as $k) {
+            $groups[$k] = $regions->flatMap(fn($r) => $r[$k])->values()->all();
+        }
+        $allRows   = collect($groups)->collapse();
+        $nationalV = $this->readinessOf($allRows);
+
+        $national = [
+            'readiness' => $nationalV,
+            'gauge'     => $nationalV !== null ? $this->gauge($nationalV, 120) : null,
+            'cards'     => $this->categoryCards($groups, 85),
+            'stats'     => $this->statusStats($allRows),
+            'records'   => $allRows->count(),
+            'total'     => $allRows->sum(fn($r) => $r['count'] ?? 1),
+            'ready'     => $regions->filter(fn($r) => $r['readiness'] !== null && $r['readiness'] >= 80)->count(),
+            'mid'       => $regions->filter(fn($r) => $r['readiness'] !== null && $r['readiness'] >= 60 && $r['readiness'] < 80)->count(),
+            'crit'      => $regions->filter(fn($r) => $r['readiness'] !== null && $r['readiness'] < 60)->count(),
+        ];
+
+        $html = view('reports.security-all-report', compact('regions', 'national'))->render();
+
+        return $this->pdfSecurity($html, 'تقرير-الأنظمة-الأمنية-جميع-المناطق.pdf');
+    }
+
+    private function securityReportData(City $city): array
+    {
+        $sec = $this->buildSecurityData($city);
+        $all = collect($sec)->collapse();
+        $readiness = $this->readinessOf($all);
+
+        return [
+            'regionName' => $city->name,
+            'cameras'    => $sec['cameras'] ?? [],
+            'alarms'     => $sec['alarms'] ?? [],
+            'access'     => $sec['access'] ?? [],
+            'records'    => $all->count(),
+            'total'      => $all->sum(fn($r) => $r['count'] ?? 1),
+            'readiness'  => $readiness,
+            'gauge'      => $readiness !== null ? $this->gauge($readiness, 110) : null,
+            'cards'      => $this->categoryCards($sec),
+            'stats'      => $this->statusStats($all),
+        ];
+    }
+
+    private function pdfSecurity(string $html, string $filename)
+    {
+        $defaultConfig = (new ConfigVariables())->getDefaults();
+        $defaultFontConfig = (new FontVariables())->getDefaults();
+
+        $mpdf = new Mpdf([
+            'mode'             => 'utf-8',
+            'format'           => 'A4',
+            'tempDir'          => storage_path('app/mpdf-temp'),
+            'fontDir'          => array_merge($defaultConfig['fontDir'], [storage_path('fonts')]),
+            'fontdata'         => $defaultFontConfig['fontdata'] + [
+                'Cairo' => ['R' => 'Cairo-Regular.ttf', 'B' => 'Cairo-Bold.ttf'],
+            ],
+            'default_font'     => 'Cairo',
+            'directionality'   => 'rtl',
+            'autoScriptToLang' => true,
+            'autoLangToFont'   => true,
+            'margin_top'       => 15,
+            'margin_bottom'    => 15,
+            'margin_left'      => 12,
+            'margin_right'     => 12,
+        ]);
+
+        $mpdf->WriteHTML($html);
+
+        return response($mpdf->Output($filename, 'S'), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /** دائرة جاهزية SVG (صورة مضمّنة) تعمل داخل mPDF */
+    private function gauge(int $v, int $size = 90): string
+    {
+        $v = max(0, min(100, $v));
+        $c = $v >= 80 ? '#1fb37f' : ($v >= 60 ? '#e8a317' : '#e5484d');
+
+        if ($v >= 100) {
+            $arc = '<circle cx="50" cy="50" r="38" fill="none" stroke="' . $c . '" stroke-width="10"/>';
+        } elseif ($v <= 0) {
+            $arc = '';
+        } else {
+            $a = deg2rad($v * 3.6 - 90);
+            $arc = sprintf(
+                '<path d="M50 12 A38 38 0 %d 1 %.2f %.2f" fill="none" stroke="%s" stroke-width="10" stroke-linecap="round"/>',
+                $v > 50 ? 1 : 0,
+                50 + 38 * cos($a),
+                50 + 38 * sin($a),
+                $c
+            );
         }
 
-        public function downloadAllSecurityReport()
-{
-    $regions = City::with(['cameras', 'alarms', 'accessControls'])
-        ->get()
-        ->map(fn ($city) => $this->securityReportData($city));
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '" viewBox="0 0 100 100">'
+            . '<circle cx="50" cy="50" r="38" fill="none" stroke="#e3e6f0" stroke-width="10"/>'
+            . $arc
+            . '<text x="50" y="58" text-anchor="middle" font-size="24" font-weight="bold" font-family="DejaVu Sans" fill="#1c2142">' . $v . '%</text>'
+            . '</svg>';
 
-    $html = view('reports.security-all-report', compact('regions'))->render();
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
 
-    return $this->pdfSecurity($html, 'تقرير-الأنظمة-الأمنية-جميع-المناطق.pdf');
-}
+    private function readinessOf($rows): ?int
+    {
+        $rows = collect($rows);
+        return $rows->isEmpty()
+            ? null
+            : (int) round($rows->where('status', 'active')->count() / $rows->count() * 100);
+    }
 
-private function securityReportData(City $city): array
-{
-    $sec = $this->buildSecurityData($city);
-    $all = collect($sec)->collapse();
+    /** بطاقات التصنيفات (دائرة + أرقام) للتصنيفات التي فيها بيانات فقط */
+    private function categoryCards(array $groups, int $size = 80): array
+    {
+        $titles = [
+            'cameras' => 'الكاميرات (ساجم)',
+            'alarms'  => 'الإنذار (زالي)',
+            'access'  => 'التحكم بالدخول (فلير)',
+        ];
 
-    return [
-        'regionName' => $city->name,
-        'cameras'    => $sec['cameras'] ?? [],
-        'alarms'     => $sec['alarms'] ?? [],
-        'access'     => $sec['access'] ?? [],
-        'records'    => $all->count(),
-        'total'      => $all->sum(fn ($r) => $r['count'] ?? 1),
-        'readiness'  => $all->count()
-            ? (int) round($all->where('status', 'active')->count() / $all->count() * 100)
-            : null,
-    ];
-}
+        $cards = [];
+        foreach ($titles as $key => $title) {
+            $rows = collect($groups[$key] ?? []);
+            if ($rows->isEmpty()) continue;
 
-private function pdfSecurity(string $html, string $filename)
-{
-    $defaultConfig = (new ConfigVariables())->getDefaults();
-    $defaultFontConfig = (new FontVariables())->getDefaults();
+            $v = $this->readinessOf($rows);
+            $cards[] = [
+                'title'   => $title,
+                'gauge'   => $this->gauge($v, $size),
+                'records' => $rows->count(),
+                'total'   => $rows->sum(fn($r) => $r['count'] ?? 1),
+            ];
+        }
+        return $cards;
+    }
 
-    $mpdf = new Mpdf([
-        'mode'             => 'utf-8',
-        'format'           => 'A4',
-        'tempDir'          => storage_path('app/mpdf-temp'),
-        'fontDir'          => array_merge($defaultConfig['fontDir'], [storage_path('fonts')]),
-        'fontdata'         => $defaultFontConfig['fontdata'] + [
-            'Cairo' => ['R' => 'Cairo-Regular.ttf', 'B' => 'Cairo-Bold.ttf'],
-        ],
-        'default_font'     => 'Cairo',
-        'directionality'   => 'rtl',
-        'autoScriptToLang' => true,
-        'autoLangToFont'   => true,
-        'margin_top'       => 15,
-        'margin_bottom'    => 15,
-        'margin_left'      => 12,
-        'margin_right'     => 12,
-    ]);
+    private function statusStats($rows): array
+    {
+        $rows = collect($rows);
+        return [
+            'active'      => $rows->where('status', 'active')->count(),
+            'faulty'      => $rows->where('status', 'faulty')->count(),
+            'maintenance' => $rows->where('status', 'maintenance')->count(),
+            'retired'     => $rows->where('status', 'retired')->count(),
+        ];
+    }
 
-    $mpdf->WriteHTML($html);
+    /** مؤشرات تقرير الاتصالات. تقبل مصفوفة بمفاتيح: exchanges/repeaters/antennas/devices/fiberOptics/workshops */
+    private function commsKpi(array $groups, int $size = 80, int $mainSize = 110): array
+    {
+        $titles = [
+            'exchanges' => 'السنترالات',
+            'repeaters' => 'محطات الإعادة',
+            'antennas'  => 'الهوائيات',
+            'devices'   => 'الأجهزة',
+        ];
 
-    return response($mpdf->Output($filename, 'S'), 200, [
-        'Content-Type'        => 'application/pdf',
-        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-    ]);
-}
+        $cards = [];
+        $all   = collect();
 
+        foreach ($titles as $key => $title) {
+            $rows = collect($groups[$key] ?? []);
+            if ($rows->isEmpty()) continue;
 
+            $cards[] = [
+                'title'   => $title,
+                'gauge'   => $this->gauge($this->readinessOf($rows), $size),
+                'records' => $rows->count(),
+                'total'   => $key === 'exchanges'
+                    ? $rows->count()
+                    : $rows->sum(fn($r) => $r['count'] ?? 1),
+            ];
+            $all = $all->concat($rows);
+        }
+
+        $readiness = $this->readinessOf($all);
+        $workshops = collect($groups['workshops'] ?? []);
+
+        return [
+            'readiness' => $readiness,
+            'gauge'     => $readiness !== null ? $this->gauge($readiness, $mainSize) : null,
+            'cards'     => $cards,
+            'stats'     => $this->statusStats($all),
+            'records'   => $all->count(),
+            'fiber'     => collect($groups['fiberOptics'] ?? [])->sum(fn($r) => $r['count'] ?? 0),
+            'workshops' => $workshops->count(),
+            'staff'     => $workshops->sum(fn($w) => ($w['engineers_count'] ?? 0) + ($w['technicians_count'] ?? 0)),
+        ];
+    }
 }

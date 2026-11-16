@@ -92,6 +92,8 @@
         <div class="subtitle">تاريخ التقرير: {{ now()->format('Y-m-d H:i') }}</div>
     </div>
 
+@include('reports.partials.comms-kpis', ['kpi' => $kpi])
+
     {{-- 1: Exchanges --}}
     <div class="section">
         <div class="section-title">السنترالات <span class="badge">{{ count($exchanges) }}</span></div>

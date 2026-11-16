@@ -18,6 +18,14 @@
         الجاهزية: <b>{{ $region['readiness'] }}%</b>
     </p>
 
+    @include('reports.partials.security-kpis', [
+    'gauge'   => $region['gauge'],
+    'cards'   => $region['cards'],
+    'stats'   => $region['stats'],
+    'records' => $region['records'],
+    'total'   => $region['total'],
+])
+
     @foreach ($cats as $key => $title)
         @if (count($region[$key]))
             <h3>{{ $title }}</h3>
