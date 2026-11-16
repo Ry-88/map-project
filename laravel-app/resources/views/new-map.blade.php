@@ -63,18 +63,18 @@
             <div class="clock"><b id="clockTime">--:--:--</b><span id="clockDate"></span></div>
             <div class="pill"><i class="dot"></i>النظام يعمل</div>
             @if (auth()->user()->isAdmin())
-                <a href="{{ url('/admin') }}" target="_blank" class="reports-btn btn-top">
+                <a href="{{ url('/admin') }}" class="reports-btn btn-top">
 
                     لوحة التحكم
                 </a>
 
-                <a href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                        <path d="M14 3v6h6M8 13h8M8 17h5" />
-                    </svg>
-                    تقرير جميع المناطق
-                </a>
+                <a id="allReportBtn" href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
+    <svg viewBox="0 0 24 24">
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+        <path d="M14 3v6h6M8 13h8M8 17h5" />
+    </svg>
+    <span id="allReportLabel">تقرير جميع المناطق</span>
+</a>
             @endif
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
@@ -130,7 +130,7 @@
                             <svg viewBox="0 0 24 24">
                                 <path d="M12 3v12M7 11l5 5 5-5M5 21h14" />
                             </svg>
-                            <span style="flex:none">تحميل تقرير المنطقة</span>
+                            <span id="regionReportLabel" style="flex:none">تحميل تقرير المنطقة</span>
                         </a>
                     @endif
                 </div>
@@ -145,11 +145,16 @@
                 </div>
                 <div class="seg" id="modeSwitch" role="tablist" aria-label="نوع العرض">
 
-                    <button class="seg-btn is-active" role="tab" aria-selected="true" data-mode="general">
-                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                    {{-- <button class="seg-btn" role="tab" aria-selected="false" data-mode="general">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                        </svg>
                         عامة
-                    </button>
-                    <button class="seg-btn" role="tab" aria-selected="false" data-mode="comms">
+                    </button> --}}
+                    <button class="seg-btn is-active" role="tab" aria-selected="true" data-mode="comms">
                         <svg viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="2" />
                             <path
@@ -315,11 +320,11 @@
 
     <script>
         /* ===================================================================
-               0) مواءمة معرّفات المناطق
-               مسارات SVG في التصميم الجديد لها معرّفات مختلفة عن الكود القديم،
-               وبيانات الداتابيز مفهرسة بالمعرّفات القديمة، لذلك نحوّلها هنا.
-               (إن لصقت مسارات SVG من الملف القديم بدل الجديد فاجعل الخيار false)
-               =================================================================== */
+           0) مواءمة معرّفات المناطق
+           مسارات SVG في التصميم الجديد لها معرّفات مختلفة عن الكود القديم،
+           وبيانات الداتابيز مفهرسة بالمعرّفات القديمة، لذلك نحوّلها هنا.
+           (إن لصقت مسارات SVG من الملف القديم بدل الجديد فاجعل الخيار false)
+           =================================================================== */
         const SVG_FROM_NEW_DESIGN = true;
         const NEW_TO_OLD_ID = {
             SA08: 'SA09', // الحدود الشمالية
@@ -401,61 +406,18 @@
 
         /* تصنيفات كل وضع: key = مفتاح البيانات، label = اسم المؤشر، title = عنوان الزر والجدول.
            الترتيب هنا = ترتيب الأرقام في KPI لنفس الوضع. */
-        const COMMS_CATS = [{
-                key: 'repeaters',
-                label: 'محطات الإعادة',
-                title: 'محطات الإعادة',
-                icon: 'tower'
-            },
-            {
-                key: 'antennas',
-                label: 'الهوائيات',
-                title: 'الهوائيات',
-                icon: 'antenna'
-            },
-            {
-                key: 'devices',
-                label: 'الأجهزة',
-                title: 'الأجهزة وملحقاتها',
-                icon: 'device'
-            },
-            {
-                key: 'exchanges',
-                label: 'السنترالات',
-                title: 'السنترالات',
-                icon: 'exchange'
-            },
-            {
-                key: 'fiberOptics',
-                label: 'الألياف',
-                title: 'الألياف البصرية',
-                icon: 'fiber'
-            },
-            {
-                key: 'workshops',
-                label: 'الورش',
-                title: 'الورش والطاقم الفني',
-                icon: 'wrench'
-            }
+        const COMMS_CATS = [
+            { key: 'repeaters', label: 'محطات الإعادة', title: 'محطات الإعادة', icon: 'tower' },
+            { key: 'antennas', label: 'الهوائيات', title: 'الهوائيات', icon: 'antenna' },
+            { key: 'devices', label: 'الأجهزة', title: 'الأجهزة وملحقاتها', icon: 'device' },
+            { key: 'exchanges', label: 'السنترالات', title: 'السنترالات', icon: 'exchange' },
+            { key: 'fiberOptics', label: 'الألياف', title: 'الألياف البصرية', icon: 'fiber' },
+            { key: 'workshops', label: 'الورش', title: 'الورش والطاقم الفني', icon: 'wrench' }
         ];
-        const SEC_CATS = [{
-                key: 'cameras',
-                label: 'الكاميرات',
-                title: 'ساجم',
-                icon: 'camera'
-            },
-            {
-                key: 'alarms',
-                label: 'الإنذار',
-                title: 'زالي',
-                icon: 'bell'
-            },
-            {
-                key: 'access',
-                label: 'التحكم بالدخول',
-                title: 'فلير',
-                icon: 'lock'
-            }
+        const SEC_CATS = [
+            { key: 'cameras', label: 'الكاميرات', title: 'ساجم', icon: 'camera' },
+            { key: 'alarms', label: 'الإنذار', title: 'زالي', icon: 'bell' },
+            { key: 'access', label: 'التحكم بالدخول', title: 'فلير', icon: 'lock' }
         ];
         // الوضع العام: مؤشران فقط (الاتصالات + الأنظمة الأمنية)
         const GENERAL_SYSTEMS = [
@@ -464,27 +426,9 @@
         ];
 
         const MODES = {
-            general: {
-                title: 'عامة',
-                cats: [],
-                kpi: {},
-                data: {},
-                sweep: 'rgba(244,180,69,.16)'
-            },
-            comms: {
-                title: 'الاتصالات',
-                cats: COMMS_CATS,
-                kpi: commsKpi,
-                data: commsData,
-                sweep: 'rgba(76,201,240,.2)'
-            },
-            security: {
-                title: 'الأنظمة الأمنية',
-                cats: SEC_CATS,
-                kpi: securityKpi,
-                data: securityData,
-                sweep: 'rgba(255,92,108,.18)'
-            }
+            general: { title: 'عامة', cats: [], kpi: {}, data: {}, sweep: 'rgba(244,180,69,.16)' },
+            comms: { title: 'الاتصالات', cats: COMMS_CATS, kpi: commsKpi, data: commsData, sweep: 'rgba(76,201,240,.2)' },
+            security: { title: 'الأنظمة الأمنية', cats: SEC_CATS, kpi: securityKpi, data: securityData, sweep: 'rgba(255,92,108,.18)' }
         };
 
         // تتغير حسب الوضع (تُضبط في setMode)
@@ -551,22 +495,51 @@
         const rawAvg = r => r && r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null;
         const mean = a => a.length ? Math.round(a.reduce((s, v) => s + v, 0) / a.length) : 0;
 
-        // متوسط وضع معيّن بحسب عدد التصنيفات المفعّلة فقط (يتجاهل الأرقام الزائدة)
+        // هل التصنيف فيه بيانات فعلية لهذه المنطقة؟
+        // صفر = لا توجد سجلات، أو مجموع العدد = 0 (الورش: يكفي وجود سجل)
+        const catHasData = (m, id, key) => {
+            const d = MODES[m].data[id]?.[key];
+            if (!Array.isArray(d) || !d.length) return false;
+            if (m === 'security') return true;          // أي سجل = التصنيف له بيانات
+            return key === 'workshops' ? true : calcTotal(key, d) > 0;
+        };
+
+        // تصنيفات الوضع التي لها بيانات في منطقة معيّنة (مع رقم موضعها idx في مصفوفة KPI)
+        const activeCats = (m, id) => MODES[m].cats
+            .map((cat, idx) => ({ ...cat, idx }))
+            .filter(c => catHasData(m, id, c.key));
+
+        // متوسط وضع معيّن بحسب التصنيفات التي لها بيانات فقط
         const modeAvg = (m, id) => {
             const a = MODES[m].kpi[id];
-            return a ? rawAvg(a.slice(0, MODES[m].cats.length)) : null;
+            if (!a) return null;
+            return rawAvg(activeCats(m, id).map(c => a[c.idx]).filter(v => typeof v === 'number'));
         };
-        // في الوضع العام: جاهزية المنطقة = متوسط (الاتصالات + الأنظمة الأمنية)
+
+        // في الوضع العام: متوسط (الاتصالات + الأنظمة الأمنية) الموجود منهما فقط
         const regionAvg = id => {
             if (currentMode === 'general') {
                 const vals = ['comms', 'security'].map(m => modeAvg(m, id)).filter(v => v != null);
                 return vals.length ? mean(vals) : null;
             }
-            return rawAvg((kpiStore[id] || []).slice(0, KPI_CATS.length));
+            return modeAvg(currentMode, id);
         };
+
+        // المؤشرات التي تُعرض في لوحة المنطقة: [{key, label, v}]
+        const regionItems = id => currentMode === 'general' ?
+            GENERAL_SYSTEMS.map(([m, label]) => {
+                const v = modeAvg(m, id);
+                return v == null ? null : { key: m, label, v };
+            }).filter(Boolean) :
+            activeCats(currentMode, id).map(c => ({
+                key: c.key,
+                label: c.label,
+                v: (kpiStore[id] || [])[c.idx] ?? 0
+            }));
+
         // معرّفات المناطق التي لها بيانات في الوضع الحالي
-        const regionIds = () => currentMode === 'general' ? [...new Set([...Object.keys(MODES.comms.kpi), ...Object.keys(
-                MODES.security.kpi)])] :
+        const regionIds = () => currentMode === 'general' ?
+            [...new Set([...Object.keys(MODES.comms.kpi), ...Object.keys(MODES.security.kpi)])] :
             Object.keys(kpiStore);
 
         const CIRC = 2 * Math.PI * 38;
@@ -696,17 +669,30 @@
             }));
         }
 
-        function renderKpis(el, values, size, clickable) {
-            el.innerHTML = KPI_CATS.map((c, i) => gaugeHTML(values[i] ?? 0, c[1], clickable ? c[0] : null, size)).join('');
+        function renderKpis(el, items, size, clickable) {
+            el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, clickable ? i.key : null, size)).join('');
             animateKpis(el);
         }
 
         function renderNationalKpis() {
             const general = currentMode === 'general';
-            const avg = general ?
-                GENERAL_SYSTEMS.map(([m]) => mean(regionIds().map(id => modeAvg(m, id)).filter(v => v != null))) :
-                KPI_CATS.map((_, i) => mean(Object.values(kpiStore).map(r => r[i]).filter(v => typeof v === 'number')));
-            const total = mean(avg);
+            let items;
+            if (general) {
+                items = GENERAL_SYSTEMS.map(([m, label]) => {
+                    const vals = regionIds().map(id => modeAvg(m, id)).filter(v => v != null);
+                    return vals.length ? { key: m, label, v: mean(vals) } : null;
+                }).filter(Boolean);
+            } else {
+                // كل تصنيف يُحسب من المناطق التي فيها بيانات له فقط
+                items = MODES[currentMode].cats.map((cat, idx) => {
+                    const vals = regionIds()
+                        .filter(id => catHasData(currentMode, id, cat.key))
+                        .map(id => kpiStore[id]?.[idx])
+                        .filter(v => typeof v === 'number');
+                    return vals.length ? { key: cat.key, label: cat.label, v: mean(vals) } : null;
+                }).filter(Boolean);
+            }
+            const total = mean(items.map(i => i.v));
 
             const overall = $('overallKpi');
             overall.innerHTML = gaugeHTML(total, 'الجاهزية العامة', null, 150, true);
@@ -716,71 +702,74 @@
             if (general) {
                 // الوضع العام: مؤشران، والضغط على أيٍّ منهما ينقلك لوضعه
                 el.className = 'kpi-grid kpi-duo';
-                el.innerHTML = KPI_CATS.map((c, i) =>
-                    gaugeHTML(avg[i], c[1], null, 96, false, `setMode('${c[0]}')`)).join('');
+                el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, null, 96, false, `setMode('${i.key}')`)).join('');
                 animateKpis(el);
             } else {
                 el.className = 'kpi-grid';
-                renderKpis(el, avg, 78, false);
+                renderKpis(el, items, 78, false);
             }
 
-            const cnt = {
-                ok: 0,
-                mid: 0,
-                crit: 0
-            };
+            const cnt = { ok: 0, mid: 0, crit: 0 };
             regionIds().forEach(id => {
                 const v = regionAvg(id);
                 if (v != null) cnt[statusOf(v).k]++;
             });
             $('statusStrip').innerHTML = `
-        <div class="st ok"><b>${cnt.ok}</b><span>مناطق جاهزة</span></div>
-        <div class="st mid"><b>${cnt.mid}</b><span>تحتاج متابعة</span></div>
-        <div class="st crit"><b>${cnt.crit}</b><span>مناطق حرجة</span></div>`;
+                <div class="st ok"><b>${cnt.ok}</b><span>مناطق جاهزة</span></div>
+                <div class="st mid"><b>${cnt.mid}</b><span>تحتاج متابعة</span></div>
+                <div class="st crit"><b>${cnt.crit}</b><span>مناطق حرجة</span></div>`;
         }
 
-        // أزرار التصنيفات في لوحة المنطقة (تتغير حسب الوضع)
-        function renderActions() {
-            $('infoActions').innerHTML = CURRENT_CATS.map(c => `
-        <button class="action-btn" data-cat="${c.key}" onclick="loadRegionalData('${c.key}')">
-          <svg viewBox="0 0 24 24">${ICONS[c.icon] || ''}</svg><span>${c.title}</span><em></em>
-        </button>`).join('');
+        // أزرار التصنيفات في لوحة المنطقة: فقط التي لها بيانات في هذه المنطقة
+        function renderActions(id) {
+            const cats = id ? activeCats(currentMode, id) : [];
+            $('infoActions').innerHTML = cats.map(c => `
+                <button class="action-btn" data-cat="${c.key}" onclick="loadRegionalData('${c.key}')">
+                  <svg viewBox="0 0 24 24">${ICONS[c.icon] || ''}</svg><span>${c.title}</span><em></em>
+                </button>`).join('');
         }
 
         function renderRegionPanel(id) {
-            renderRegionHead(id);
             const general = currentMode === 'general';
+            const items = regionItems(id);
+            renderActions(id); // لازم قبل renderRegionHead لأنها تحدّث عدّاد الأزرار
+            renderRegionHead(id);
             // نخفي أزرار التصنيفات فقط (زر تقرير المنطقة يبقى ظاهراً)
             $('infoActions').style.display = general ? 'none' : 'contents';
-            $('regionHint').textContent = general ? 'اضغط على النظام لعرض تفاصيله:' : 'اختر التصنيف لعرض الجدول:';
+            $('regionHint').textContent = !items.length ?
+                'لا توجد بيانات مسجّلة لهذه المنطقة.' :
+                general ? 'اضغط على النظام لعرض تفاصيله:' : 'اختر التصنيف لعرض الجدول:';
             const el = $('regionKpis');
             if (general) {
                 el.className = 'kpi-grid kpi-duo';
-                el.innerHTML =
-                    gaugeHTML(modeAvg('comms', id) || 0, 'الاتصالات', null, 96, false, "setMode('comms')") +
-                    gaugeHTML(modeAvg('security', id) || 0, 'الأنظمة الأمنية', null, 96, false, "setMode('security')");
+                el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, null, 96, false, `setMode('${i.key}')`)).join('');
                 animateKpis(el);
             } else {
                 el.className = 'kpi-grid';
-                renderKpis(el, kpiStore[id] || [], 74, true);
+                renderKpis(el, items, 74, true);
             }
         }
 
         function renderRegionHead(id) {
-            const general = currentMode === 'general';
-            const vals = general ? [modeAvg('comms', id) || 0, modeAvg('security', id) || 0] :
-                KPI_CATS.map((_, i) => (kpiStore[id] || [])[i] ?? 0);
-            const names = KPI_CATS.map(c => c[1]);
-            const avg = regionAvg(id) || 0;
-            const s = statusOf(avg);
-            const weak = vals.indexOf(Math.min(...vals));
-            $('regionOverall').innerHTML = `<div class="region-hero">
-        ${gaugeHTML(avg, 'الجاهزية العامة', null, 108, true)}
-        <div class="hero-text">
-          <span class="chip ${s.k}">${s.t}</span>
-          <p>أدنى مؤشر في المنطقة:<br><b>${esc(names[weak])}</b> بنسبة <b>${vals[weak]}%</b></p>
-        </div></div>`;
-            animateKpis($('regionOverall'));
+            const items = regionItems(id);
+            const avg = regionAvg(id);
+            if (!items.length || avg == null) {
+                $('regionOverall').innerHTML = `<div class="region-hero">
+                <div class="hero-text">
+                  <span class="chip">لا توجد بيانات</span>
+                  <p>لا توجد بيانات مسجّلة لهذه المنطقة في هذا العرض.</p>
+                </div></div>`;
+            } else {
+                const s = statusOf(avg);
+                const weak = items.reduce((m, i) => i.v < m.v ? i : m, items[0]);
+                $('regionOverall').innerHTML = `<div class="region-hero">
+                ${gaugeHTML(avg, 'الجاهزية العامة', null, 108, true)}
+                <div class="hero-text">
+                  <span class="chip ${s.k}">${s.t}</span>
+                  <p>أدنى مؤشر في المنطقة:<br><b>${esc(weak.label)}</b> بنسبة <b>${weak.v}%</b></p>
+                </div></div>`;
+                animateKpis($('regionOverall'));
+            }
             $('regionCode').textContent = id;
 
             // عدّاد السجلات على أزرار التصنيفات (من بيانات الداتابيز)
@@ -997,10 +986,13 @@
                     return data.filter(r => r.type).length;
                 case 'devices':
                     return data.length;
-                default: // repeaters / antennas / fiberOptics / الأنظمة الأمنية
-                    return data.reduce((s, r) => s + (Number(r.count) || 0), 0);
+                default: // repeaters / antennas / fiberOptics / cameras / alarms / access
+                    return data.reduce((s, r) =>
+                        s + (r.count != null && r.count !== '' ? (Number(r.count) || 0) : 1), 0);
             }
         }
+
+        const cntOf = r => r.count ?? (currentMode === 'security' ? 1 : '');
 
         function loadRegionalData(category) {
             // الوضع العام لا يعرض جداول (الضغط على المؤشر ينقل لوضع الاتصالات/الأمنية)
@@ -1056,8 +1048,8 @@
                     `<tr><th>النوع</th><th>العدد</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
                 tableBody.innerHTML = data.length ?
                     data.map(row => `<tr>
-                <td>${esc(row.item)}</td>
-                <td>${esc(row.count)}</td>
+                <td>${esc(row.item ?? row.name)}</td>
+                <td>${esc(cntOf(row))}</td>
                 <td>${esc(row.loc ?? row.location)}</td>
                 ${assetCells(row)}
             </tr>`).join('') :
@@ -1068,8 +1060,8 @@
                 tableHeader.innerHTML = `<tr><th>النوع</th><th>العدد</th><th>الموقع</th></tr>`;
                 tableBody.innerHTML = data.length ?
                     data.map(row => `<tr>
-                <td>${esc(row.item)}</td>
-                <td>${esc(row.count)}</td>
+                <td>${esc(row.item ?? row.name)}</td>
+                <td>${esc(cntOf(row))}</td>
                 <td>${esc(row.loc ?? row.location)}</td>
             </tr>`).join('') :
                     emptyRow(3);
@@ -1124,10 +1116,10 @@
             </div>
             ${accessories.length ? `<div class="device-chips">${accessories.map(a => `<small>${esc(String(a).trim())}</small>`).join('')}</div>` : ''}
             ${pct !== null ? `
-                    <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
-                    <div class="device-ready-track">
-                      <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
-                    </div>` : ''}
+                <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
+                <div class="device-ready-track">
+                  <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
+                </div>` : ''}
           </div>
         </div>`;
             }).join('');
@@ -1183,10 +1175,9 @@
             const open = function() {
                 const bbox = this.getBBox();
                 currentRegionId = this.id;
+                updateReportLinks();
                 currentCategory = null;
                 // زر التقرير يظهر للأدمن فقط، لذلك نتأكد من وجوده قبل تعيين الرابط
-                const reportBtn = $('downloadReportBtn');
-                if (reportBtn) reportBtn.href = `/region/${currentRegionId}/report`;
                 setViewBox([bbox.x - 40, bbox.y - 40, bbox.width + 80, bbox.height + 80], 750);
                 paths.forEach(p => {
                     p.classList.add('hidden-region');
@@ -1277,7 +1268,7 @@
 
         /* ===================================================================
            9) شريط التنبيهات (يُبنى تلقائياً من مؤشرات الوضع الحالي)
-           معطّل حالياً لأن الـ footer معلّق في الأعلى؛ يشتغل تلقائياً إذا فككت التعليق.
+           يعمل فقط إذا كان الـ footer (tickerTrack) موجوداً في الصفحة.
            =================================================================== */
         function buildTicker() {
             const track = $('tickerTrack');
@@ -1285,15 +1276,11 @@
             const sources = currentMode === 'general' ? ['comms', 'security'] : [currentMode];
             const items = [];
             sources.forEach(m => {
-                const cats = MODES[m].cats;
                 Object.keys(MODES[m].kpi).forEach(id => {
                     if (!regionNames[id]) return;
-                    MODES[m].kpi[id].slice(0, cats.length).forEach((v, i) => {
-                        if (v < 70) items.push({
-                            id,
-                            v,
-                            cat: cats[i].label
-                        });
+                    activeCats(m, id).forEach(c => {
+                        const v = MODES[m].kpi[id][c.idx];
+                        if (typeof v === 'number' && v < 70) items.push({ id, v, cat: c.label });
                     });
                 });
             });
@@ -1314,6 +1301,38 @@
         /* ===================================================================
            11) أوضاع العرض (عامة / الاتصالات / الأنظمة الأمنية) + التشغيل
            =================================================================== */
+           console.log('SECURITY DATA:', securityData);
+console.log('SECURITY KPI (raw):', securityKpiRaw);
+Object.keys(securityData).forEach(id =>
+    console.log(id, '→', regionNames[id] || '❌ معرّف غير معروف', Object.keys(securityData[id] || {}))
+);
+
+const REPORTS = {
+
+    comms:    { all: @json(route('regions.report.all')),
+                region: id => `/region/${id}/report`,
+                allLabel: 'تقرير الاتصالات (جميع المناطق)',
+                regionLabel: 'تحميل تقرير الاتصالات' },
+    security: { all: @json(route('regions.security.report.all')),
+                region: id => `/region/${id}/security-report`,
+                allLabel: 'تقرير الأنظمة الأمنية (جميع المناطق)',
+                regionLabel: 'تحميل تقرير الأنظمة الأمنية' }
+};
+
+function updateReportLinks() {
+    const r = REPORTS[currentMode];
+    const all = $('allReportBtn');          // يوجد للأدمن فقط
+    if (all) {
+        all.href = r.all;
+        $('allReportLabel').textContent = r.allLabel;
+    }
+    const rb = $('downloadReportBtn');      // يوجد للأدمن فقط
+    if (rb) {
+        rb.href = currentRegionId ? r.region(currentRegionId) : '#';
+        $('regionReportLabel').textContent = r.regionLabel;
+    }
+}
+
         function setMode(key) {
             if (!MODES[key]) return;
             currentMode = key;
@@ -1322,7 +1341,6 @@
             CURRENT_CATS = MODES[key].cats;
             KPI_CATS = key === 'general' ? GENERAL_SYSTEMS : CURRENT_CATS.map(c => [c.key, c.label]);
             CAT_TITLES = Object.fromEntries(CURRENT_CATS.map(c => [c.key, c.title]));
-            renderActions();
 
             document.querySelectorAll('.seg-btn').forEach(b => {
                 const on = b.dataset.mode === key;
@@ -1346,10 +1364,11 @@
                 buildRegionMesh(document.getElementById(currentRegionId));
                 if (dataView.style.display === 'flex') {
                     if (key === 'general') showRegionMap();
-                    else if (currentCategory && CAT_TITLES[currentCategory]) loadRegionalData(currentCategory);
+                    else if (currentCategory && CAT_TITLES[currentCategory] && catHasData(key, currentRegionId, currentCategory)) loadRegionalData(currentCategory);
                     else showRegionMap();
                 }
             }
+            updateReportLinks();
             hideTip();
             updateCrumbs();
         }
@@ -1359,7 +1378,7 @@
             if (b) setMode(b.dataset.mode);
         });
 
-        setMode('general');
+        setMode('comms');
         fitLabels();
 
         let rzTimer;

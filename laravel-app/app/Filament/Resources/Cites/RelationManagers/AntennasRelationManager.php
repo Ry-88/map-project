@@ -16,9 +16,11 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use App\Enums\AssetStatus;
+use App\Filament\Resources\Cites\Pages\EditCites;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\ImageColumn;
+use Illuminate\Database\Eloquent\Model;
 
 class AntennasRelationManager extends RelationManager
 {
@@ -98,4 +100,9 @@ class AntennasRelationManager extends RelationManager
                 ]),
             ]);
     }
+
+            public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+        {
+            return $pageClass === EditCites::class;
+        }
 }

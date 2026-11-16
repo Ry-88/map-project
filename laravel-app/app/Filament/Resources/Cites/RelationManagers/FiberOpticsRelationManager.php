@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Cites\RelationManagers;
 
+use App\Filament\Resources\Cites\Pages\EditCites;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -15,6 +16,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class FiberOpticsRelationManager extends RelationManager
 {
@@ -59,4 +61,9 @@ class FiberOpticsRelationManager extends RelationManager
                 ]),
             ]);
     }
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+        {
+            return $pageClass === EditCites::class;
+        }
 }

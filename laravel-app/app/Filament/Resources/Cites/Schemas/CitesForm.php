@@ -16,7 +16,7 @@ class CitesForm
                     ->required()
                     ->maxLength(255),
 
-                // 👇 هنا بنضيف لاحقًا الحقول الخاصة بكل منطقة
+                
             ]);
     }
 }

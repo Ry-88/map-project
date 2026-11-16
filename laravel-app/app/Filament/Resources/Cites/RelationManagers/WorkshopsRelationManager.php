@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Cites\RelationManagers;
 
+use App\Filament\Resources\Cites\Pages\EditCites;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -13,6 +14,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\TagsInput;
+use Illuminate\Database\Eloquent\Model;
 
 class WorkshopsRelationManager extends RelationManager
 {
@@ -48,4 +50,9 @@ class WorkshopsRelationManager extends RelationManager
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+        {
+            return $pageClass === EditCites::class;
+        }
 }

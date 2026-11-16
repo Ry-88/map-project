@@ -13,9 +13,11 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use App\Enums\AssetStatus;
+use App\Filament\Resources\Cites\Pages\EditCites;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\ImageColumn;
+use Illuminate\Database\Eloquent\Model;
 
 class CentralsRelationManager extends RelationManager
 {
@@ -89,4 +91,9 @@ class CentralsRelationManager extends RelationManager
             ->recordActions([EditAction::make(), DeleteAction::make()])
             ->toolbarActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+        {
+            return $pageClass === EditCites::class;
+        }
 }

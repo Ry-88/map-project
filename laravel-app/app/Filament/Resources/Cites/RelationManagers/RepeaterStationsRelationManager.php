@@ -13,9 +13,11 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use App\Enums\AssetStatus;
+use App\Filament\Resources\Cites\Pages\EditCites;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\ImageColumn;
+use Illuminate\Database\Eloquent\Model;
 
 class RepeaterStationsRelationManager extends RelationManager
 {
@@ -88,4 +90,9 @@ class RepeaterStationsRelationManager extends RelationManager
                 ]),
             ]);
     }
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+        {
+            return $pageClass === EditCites::class;
+        }
 }

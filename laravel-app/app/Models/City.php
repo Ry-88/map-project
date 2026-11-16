@@ -11,11 +11,11 @@ class City extends Model
     protected $table = 'cities';
 
     public function classes()
-        {
-            return $this->hasMany(City_class::class, 'city_id');
-        }
+    {
+        return $this->hasMany(City_class::class, 'city_id');
+    }
 
-        public function repeaterStations(): HasMany
+    public function repeaterStations(): HasMany
     {
         return $this->hasMany(RepeaterStation::class, 'region_id');
     }
@@ -43,5 +43,20 @@ class City extends Model
     public function workshops(): HasMany
     {
         return $this->hasMany(Workshop::class, 'region_id');
+    }
+
+    public function cameras(): HasMany
+    {
+        return $this->hasMany(Camera::class, 'region_id');
+    }
+
+    public function alarms(): HasMany
+    {
+        return $this->hasMany(Alarm::class, 'region_id');
+    }
+
+    public function accessControls(): HasMany
+    {
+        return $this->hasMany(AccessControl::class, 'region_id');
     }
 }

@@ -14,11 +14,18 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
     Route::get('/regions/report-all', [MapController::class, 'downloadAllReport'])
         ->name('regions.report.all');
+
+    Route::get('/regions/security-report', [MapController::class, 'downloadAllSecurityReport'])
+    ->name('regions.security.report.all');
+
+    Route::get('/region/{regionId}/security-report', [MapController::class, 'downloadSecurityReport'])
+        ->name('region.security.report');
+
+    Route::get('/home', [MapController::class, 'index'])->name('new-map');
     });
 
 Route::middleware(['auth', 'map.access'])->group(function () {
 
-    Route::get('/home', [MapController::class, 'index'])->name('new-map');
 
     });
 

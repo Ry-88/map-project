@@ -30,15 +30,69 @@ class MapController extends Controller
             'devices',
             'fiberOptics',
             'workshops',
+            'cameras',
+            'alarms',
+            'accessControls',
         ])->get();
 
         $regionalDataStore = [];
+        $securityDataStore = [];
+        $securityKpiStore  = [];
 
         foreach ($cities as $city) {
             $regionalDataStore[$city->code] = $this->buildRegionData($city);
+
+            $sec = $this->buildSecurityData($city);
+            if (!empty($sec)) {
+                $securityDataStore[$city->code] = $sec;
+                $securityKpiStore[$city->code]  = $this->securityKpi($sec);
+            }
         }
 
-        return view('new-map', compact('regionalDataStore'));
+        return view('new-map', compact(
+            'regionalDataStore',
+            'securityDataStore',
+            'securityKpiStore'
+        ));
+    }
+
+    private function buildSecurityData(City $city): array
+    {
+        $sources = [
+            'cameras' => $city->cameras,
+            'alarms'  => $city->alarms,
+            'access'  => $city->accessControls,
+        ];
+
+        $out = [];
+
+        foreach ($sources as $key => $rows) {
+            if ($rows->isEmpty()) continue;
+
+            $out[$key] = $rows->map(fn($r) => [
+                'item'          => $r->item,
+                'count'         => $r->count,
+                'loc'           => $r->location,
+                'status'        => $r->status?->value,
+                'status_label'  => $r->status?->getLabel(),
+                'serial_number' => $r->serial_number,
+                'image'         => $r->image_url,
+            ])->values()->all();
+        }
+
+        return $out;
+    }
+
+    private function securityKpi(array $sec): array
+    {
+        return array_map(function ($key) use ($sec) {
+            $rows = collect($sec[$key] ?? []);
+            if ($rows->isEmpty()) return 0;
+
+            return (int) round(
+                $rows->where('status', 'active')->count() / $rows->count() * 100
+            );
+        }, ['cameras', 'alarms', 'access']);
     }
 
     public function downloadReport($regionId)
@@ -93,58 +147,58 @@ class MapController extends Controller
     }
 
     public function downloadAllReport()
-{
-    $cities = City::with([
-        'centrals',
-        'repeaterStations',
-        'antennas',
-        'devices',
-        'fiberOptics',
-        'workshops',
-    ])->get();
+    {
+        $cities = City::with([
+            'centrals',
+            'repeaterStations',
+            'antennas',
+            'devices',
+            'fiberOptics',
+            'workshops',
+        ])->get();
 
-    $regions = $cities->map(function ($city) {
-        $data = $this->buildRegionData($city);
-        $data['regionName'] = $city->name;
-        return $data;
-    });
+        $regions = $cities->map(function ($city) {
+            $data = $this->buildRegionData($city);
+            $data['regionName'] = $city->name;
+            return $data;
+        });
 
-    $html = view('reports.all-regions-report', compact('regions'))->render();
+        $html = view('reports.all-regions-report', compact('regions'))->render();
 
-    $defaultConfig = (new ConfigVariables())->getDefaults();
-    $fontDirs = $defaultConfig['fontDir'];
+        $defaultConfig = (new ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
 
-    $defaultFontConfig = (new FontVariables())->getDefaults();
-    $fontData = $defaultFontConfig['fontdata'];
+        $defaultFontConfig = (new FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
 
-    $mpdf = new Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'A4',
-        'tempDir' => storage_path('app/mpdf-temp'),
-        'fontDir' => array_merge($fontDirs, [storage_path('fonts')]),
-        'fontdata' => $fontData + [
-            'Cairo' => [
-                'R' => 'Cairo-Regular.ttf',
-                'B' => 'Cairo-Bold.ttf',
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'tempDir' => storage_path('app/mpdf-temp'),
+            'fontDir' => array_merge($fontDirs, [storage_path('fonts')]),
+            'fontdata' => $fontData + [
+                'Cairo' => [
+                    'R' => 'Cairo-Regular.ttf',
+                    'B' => 'Cairo-Bold.ttf',
+                ],
             ],
-        ],
-        'default_font' => 'Cairo',
-        'directionality' => 'rtl',
-        'autoScriptToLang' => true,
-        'autoLangToFont' => true,
-        'margin_top' => 15,
-        'margin_bottom' => 15,
-        'margin_left' => 12,
-        'margin_right' => 12,
-    ]);
+            'default_font' => 'Cairo',
+            'directionality' => 'rtl',
+            'autoScriptToLang' => true,
+            'autoLangToFont' => true,
+            'margin_top' => 15,
+            'margin_bottom' => 15,
+            'margin_left' => 12,
+            'margin_right' => 12,
+        ]);
 
-    $mpdf->WriteHTML($html);
+        $mpdf->WriteHTML($html);
 
-    return response($mpdf->Output('تقرير-جميع-المناطق.pdf', 'S'), 200, [
-        'Content-Type' => 'application/pdf',
-        'Content-Disposition' => 'attachment; filename="تقرير-جميع-المناطق.pdf"',
-    ]);
-}
+        return response($mpdf->Output('تقرير-جميع-المناطق.pdf', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="تقرير-جميع-المناطق.pdf"',
+        ]);
+    }
 
 
     private function buildRegionData(City $city): array
@@ -153,7 +207,7 @@ class MapController extends Controller
             'exchanges' => $city->centrals->map(fn($central) => [
                 'type'    => $central->type,
                 'sw'      => $central->version,
-                'location'=> $central->location,
+                'location' => $central->location,
                 'analog'  => $central->analog_count,
                 'digital' => $central->digital_count,
                 'direct'  => $central->direct_count,
@@ -216,4 +270,79 @@ class MapController extends Controller
             ])->values(),
         ];
     }
+
+    public function downloadSecurityReport($regionId)
+        {
+            $city = City::with(['cameras', 'alarms', 'accessControls'])
+                ->where('code', $regionId)
+                ->firstOrFail();
+
+            $region = $this->securityReportData($city);
+
+            $html = view('reports.security-region-report', compact('region'))->render();
+
+            return $this->pdfSecurity($html, "تقرير-الأنظمة-الأمنية-{$city->name}.pdf");
+        }
+
+        public function downloadAllSecurityReport()
+{
+    $regions = City::with(['cameras', 'alarms', 'accessControls'])
+        ->get()
+        ->map(fn ($city) => $this->securityReportData($city));
+
+    $html = view('reports.security-all-report', compact('regions'))->render();
+
+    return $this->pdfSecurity($html, 'تقرير-الأنظمة-الأمنية-جميع-المناطق.pdf');
+}
+
+private function securityReportData(City $city): array
+{
+    $sec = $this->buildSecurityData($city);
+    $all = collect($sec)->collapse();
+
+    return [
+        'regionName' => $city->name,
+        'cameras'    => $sec['cameras'] ?? [],
+        'alarms'     => $sec['alarms'] ?? [],
+        'access'     => $sec['access'] ?? [],
+        'records'    => $all->count(),
+        'total'      => $all->sum(fn ($r) => $r['count'] ?? 1),
+        'readiness'  => $all->count()
+            ? (int) round($all->where('status', 'active')->count() / $all->count() * 100)
+            : null,
+    ];
+}
+
+private function pdfSecurity(string $html, string $filename)
+{
+    $defaultConfig = (new ConfigVariables())->getDefaults();
+    $defaultFontConfig = (new FontVariables())->getDefaults();
+
+    $mpdf = new Mpdf([
+        'mode'             => 'utf-8',
+        'format'           => 'A4',
+        'tempDir'          => storage_path('app/mpdf-temp'),
+        'fontDir'          => array_merge($defaultConfig['fontDir'], [storage_path('fonts')]),
+        'fontdata'         => $defaultFontConfig['fontdata'] + [
+            'Cairo' => ['R' => 'Cairo-Regular.ttf', 'B' => 'Cairo-Bold.ttf'],
+        ],
+        'default_font'     => 'Cairo',
+        'directionality'   => 'rtl',
+        'autoScriptToLang' => true,
+        'autoLangToFont'   => true,
+        'margin_top'       => 15,
+        'margin_bottom'    => 15,
+        'margin_left'      => 12,
+        'margin_right'     => 12,
+    ]);
+
+    $mpdf->WriteHTML($html);
+
+    return response($mpdf->Output($filename, 'S'), 200, [
+        'Content-Type'        => 'application/pdf',
+        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+    ]);
+}
+
+
 }

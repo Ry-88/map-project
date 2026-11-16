@@ -19,6 +19,8 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Pages\Auth\Login;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Blade;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -26,10 +28,21 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
+            ->renderHook(
+                    PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                    fn (): string => Blade::render(<<<'HTML'
+                        <a href="{{ url('/home') }}"
+                        class="fi-btn fi-btn-size-md fi-color-primary"
+                        style="display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .9rem;border-radius:.5rem;background:#d8901d;color:#fff;font-weight:600;text-decoration:none;margin-inline:.5rem;">
+                            <x-filament::icon icon="heroicon-o-map" style="width:1.1rem;height:1.1rem;" />
+                            العودة للخريطة
+                        </a>
+                    HTML)
+                )
             ->id('admin')
             ->path('admin')
             ->login(Login::class)
-            ->authGuard('admin')
+            ->authGuard('web')
             ->brandName('خريطة حرس الحدود')
             ->colors([
                 'primary' => Color::Amber,
