@@ -69,12 +69,12 @@
                 </a>
 
                 <a id="allReportBtn" href="{{ route('regions.report.all') }}" class="reports-btn btn-top">
-    <svg viewBox="0 0 24 24">
-        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-        <path d="M14 3v6h6M8 13h8M8 17h5" />
-    </svg>
-    <span id="allReportLabel">تقرير جميع المناطق</span>
-</a>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                        <path d="M14 3v6h6M8 13h8M8 17h5" />
+                    </svg>
+                    <span id="allReportLabel">تقرير جميع المناطق</span>
+                </a>
             @endif
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
@@ -305,6 +305,7 @@
                     </table>
                 </div>
                 <div id="devicesContainer" class="devices-container"></div>
+                <div id="readinessContainer" class="data-table-container" style="display:none"></div>
             </div>
         </section>
     </main>
@@ -317,1094 +318,1125 @@
     </footer>
 
     <div class="tip" id="tip" role="tooltip"></div>
+ <script>
 
-    <script>
-        /* ===================================================================
-           0) مواءمة معرّفات المناطق
-           مسارات SVG في التصميم الجديد لها معرّفات مختلفة عن الكود القديم،
-           وبيانات الداتابيز مفهرسة بالمعرّفات القديمة، لذلك نحوّلها هنا.
-           (إن لصقت مسارات SVG من الملف القديم بدل الجديد فاجعل الخيار false)
-           =================================================================== */
-        const SVG_FROM_NEW_DESIGN = true;
-        const NEW_TO_OLD_ID = {
-            SA08: 'SA09', // الحدود الشمالية
-            SA12: 'SA13', // الجوف
-            SA10: 'SA11', // نجران
-            SA14: 'SA06', // عسير
-            SA09: 'SA10', // جازان
-            SA06: 'SA08' // حائل
-        };
-        if (SVG_FROM_NEW_DESIGN) {
-            document.querySelectorAll('#features path[id]').forEach(p => {
-                if (NEW_TO_OLD_ID[p.id]) p.id = NEW_TO_OLD_ID[p.id];
-            });
-        }
-
-        /* ===================================================================
-           1) البيانات من الداتابيز
-           ---- الاتصالات (موجودة سابقاً) ----
-           $regionalDataStore : بيانات جداول الاتصالات (كما كانت)
-           $kpiStore          : { SA01: [6 أرقام], ... } بترتيب COMMS_CATS
-           ---- الأنظمة الأمنية (جديدة، اختيارية) ----
-           $securityDataStore : { SA01: { cameras:[...], alarms:[...], access:[...] }, ... }
-           $securityKpiStore  : { SA01: [3 أرقام], ... } بترتيب SEC_CATS
-           أي متغير غير ممرَّر من الكنترولر تُستخدم له قيمة بديلة (أرقام تجريبية / جداول فارغة).
-
-           شكل الصفوف المتوقع:
-             exchanges   : {type, sw, location, serial_number, status, status_label, image}
-             repeaters / antennas : {item, count, loc, serial_number, status, status_label, image}
-             fiberOptics : {item, count, loc}
-             workshops   : {name, location, engineers[], technicians[], engineers_count, technicians_count}
-             devices     : {name, model, serial, location, last_maintenance, readiness, status, image, accessories}
-             cameras / alarms / access : {item, count, loc} (+ الحقول الاختيارية serial_number/status/image)
-           =================================================================== */
-        const hasKeys = o => !!o && typeof o === 'object' && Object.keys(o).length > 0;
-
-        const commsData = @json($regionalDataStore);
-        const securityDataRaw = @json($securityDataStore ?? null);
-        const securityData = hasKeys(securityDataRaw) ? securityDataRaw : {};
-
-        const commsKpiRaw = @json($kpiStore ?? null);
-        const securityKpiRaw = @json($securityKpiStore ?? null);
-
-        const commsKpi = hasKeys(commsKpiRaw) ? commsKpiRaw : {
-            SA01: [92, 88, 76, 84, 95, 90],
-            SA02: [85, 79, 68, 81, 88, 83],
-            SA03: [78, 72, 64, 75, 82, 77],
-            SA04: [90, 86, 81, 89, 93, 87],
-            SA07: [66, 58, 49, 62, 71, 60],
-            SA09: [74, 69, 61, 70, 78, 72],
-            SA10: [63, 57, 46, 59, 68, 58],
-            SA11: [58, 52, 44, 55, 64, 56],
-            SA13: [58, 52, 44, 55, 64, 56],
-            SA06: [80, 75, 70, 77, 84, 79]
-        };
-        const securityKpi = hasKeys(securityKpiRaw) ? securityKpiRaw : {
-            SA01: [88, 84, 90],
-            SA02: [80, 83, 71],
-            SA03: [70, 76, 66],
-            SA04: [93, 91, 87],
-            SA07: [71, 64, 58],
-            SA09: [60, 57, 50],
-            SA10: [68, 73, 63],
-            SA11: [67, 61, 54],
-            SA13: [64, 59, 52],
-            SA06: [77, 79, 73]
-        };
-
-        const ICONS = {
-            tower: '<path d="M12 12v9M8 21h8M9 21l3-9 3 9" /><circle cx="12" cy="9" r="1.5" /><path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7" />',
-            antenna: '<circle cx="12" cy="12" r="2" /><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19a10 10 0 0 1 0-14" />',
-            device: '<rect x="6" y="8" width="12" height="13" rx="2" /><path d="M10 8l4-5M9 12h6M9 16h3" />',
-            exchange: '<rect x="3" y="4" width="18" height="6" rx="1.5" /><rect x="3" y="14" width="18" height="6" rx="1.5" /><path d="M7 7h.01M7 17h.01" />',
-            fiber: '<circle cx="3.5" cy="17" r="1.2" /><circle cx="20.5" cy="17" r="1.2" /><path d="M4.5 17c4 0 4-10 7.5-10s3.5 10 7.5 10" />',
-            wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />',
-            camera: '<path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M15 11l6-3v8l-6-3" />',
-            bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />',
-            lock: '<rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />'
-        };
-
-        /* تصنيفات كل وضع: key = مفتاح البيانات، label = اسم المؤشر، title = عنوان الزر والجدول.
-           الترتيب هنا = ترتيب الأرقام في KPI لنفس الوضع. */
-        const COMMS_CATS = [
-            { key: 'repeaters', label: 'محطات الإعادة', title: 'محطات الإعادة', icon: 'tower' },
-            { key: 'antennas', label: 'الهوائيات', title: 'الهوائيات', icon: 'antenna' },
-            { key: 'devices', label: 'الأجهزة', title: 'الأجهزة وملحقاتها', icon: 'device' },
-            { key: 'exchanges', label: 'السنترالات', title: 'السنترالات', icon: 'exchange' },
-            { key: 'fiberOptics', label: 'الألياف', title: 'الألياف البصرية', icon: 'fiber' },
-            { key: 'workshops', label: 'الورش', title: 'الورش والطاقم الفني', icon: 'wrench' }
-        ];
-        const SEC_CATS = [
-            { key: 'cameras', label: 'الكاميرات', title: 'ساجم', icon: 'camera' },
-            { key: 'alarms', label: 'الإنذار', title: 'زالي', icon: 'bell' },
-            { key: 'access', label: 'التحكم بالدخول', title: 'فلير', icon: 'lock' }
-        ];
-        // الوضع العام: مؤشران فقط (الاتصالات + الأنظمة الأمنية)
-        const GENERAL_SYSTEMS = [
-            ['comms', 'الاتصالات'],
-            ['security', 'الأنظمة الأمنية']
-        ];
-
-        const MODES = {
-            general: { title: 'عامة', cats: [], kpi: {}, data: {}, sweep: 'rgba(244,180,69,.16)' },
-            comms: { title: 'الاتصالات', cats: COMMS_CATS, kpi: commsKpi, data: commsData, sweep: 'rgba(76,201,240,.2)' },
-            security: { title: 'الأنظمة الأمنية', cats: SEC_CATS, kpi: securityKpi, data: securityData, sweep: 'rgba(255,92,108,.18)' }
-        };
-
-        // تتغير حسب الوضع (تُضبط في setMode)
-        let KPI_CATS = [];
-        let CAT_TITLES = {};
-        let CURRENT_CATS = [];
-        let kpiStore = MODES.general.kpi;
-        let regionalDataStore = MODES.general.data;
-
-        /* ===================================================================
-           2) عناصر الصفحة والحالة
-           =================================================================== */
-        const $ = id => document.getElementById(id);
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const USER_NAME = @json(Auth::user()->name);
-
-        const svgMap = $('saudiMap');
-        const resetMapBtn = $('resetMapBtn');
-        const mapTitle = $('mapTitle');
-        const mapSub = $('mapSub');
-        const mapStage = $('mapStage');
-        const dataView = $('dataView');
-        const dataTableContainer = $('dataTableContainer');
-        const devicesContainer = $('devicesContainer');
-        const tableBody = $('tableBody');
-        const tableHeader = $('tableHeader');
-        const mapLabels = $('map-labels');
-        const netNational = $('netNational');
-        const netRegion = $('netRegion');
-        const tip = $('tip');
-        const paths = document.querySelectorAll('#features path');
-
-        let currentRegionId = null;
-        let currentCategory = null;
-        let currentMode = 'general';
-        let booted = false;
-
-        const regionNames = {};
-        paths.forEach(p => {
-            if (p.id) regionNames[p.id] = p.getAttribute('name');
+    const SVG_FROM_NEW_DESIGN = true;
+    const NEW_TO_OLD_ID = {
+        SA08: 'SA09',
+        SA12: 'SA13',
+        SA10: 'SA11',
+        SA14: 'SA06',
+        SA09: 'SA10',
+        SA06: 'SA08'
+    };
+    if (SVG_FROM_NEW_DESIGN) {
+        document.querySelectorAll('#features path[id]').forEach(p => {
+            if (NEW_TO_OLD_ID[p.id]) p.id = NEW_TO_OLD_ID[p.id];
         });
+    }
 
-        /* ===================================================================
-           3) أدوات مساعدة
-           =================================================================== */
-        const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-        } [m]));
-        const statusOf = v => v >= 80 ? {
-            k: 'ok',
-            t: 'جاهز'
-        } : v >= 60 ? {
-            k: 'mid',
-            t: 'يحتاج متابعة'
-        } : {
-            k: 'crit',
-            t: 'حرج'
-        };
-        const kpiColor = v => v >= 80 ? '#2ee6a6' : v >= 60 ? '#ffb224' : '#ff5c6c';
-        const rawAvg = r => r && r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null;
-        const mean = a => a.length ? Math.round(a.reduce((s, v) => s + v, 0) / a.length) : 0;
+    const hasKeys = o => !!o && typeof o === 'object' && Object.keys(o).length > 0;
 
-        // هل التصنيف فيه بيانات فعلية لهذه المنطقة؟
-        // صفر = لا توجد سجلات، أو مجموع العدد = 0 (الورش: يكفي وجود سجل)
-        const catHasData = (m, id, key) => {
-            const d = MODES[m].data[id]?.[key];
-            if (!Array.isArray(d) || !d.length) return false;
-            if (m === 'security') return true;          // أي سجل = التصنيف له بيانات
-            return key === 'workshops' ? true : calcTotal(key, d) > 0;
-        };
+    const commsData = @json($regionalDataStore);
+    const securityDataRaw = @json($securityDataStore ?? null);
+    const securityData = hasKeys(securityDataRaw) ? securityDataRaw : {};
 
-        // تصنيفات الوضع التي لها بيانات في منطقة معيّنة (مع رقم موضعها idx في مصفوفة KPI)
-        const activeCats = (m, id) => MODES[m].cats
-            .map((cat, idx) => ({ ...cat, idx }))
-            .filter(c => catHasData(m, id, c.key));
+    const commsKpiRaw = @json($kpiStore ?? null);
+    const securityKpiRaw = @json($securityKpiStore ?? null);
 
-        // متوسط وضع معيّن بحسب التصنيفات التي لها بيانات فقط
-        const modeAvg = (m, id) => {
-            const a = MODES[m].kpi[id];
-            if (!a) return null;
-            return rawAvg(activeCats(m, id).map(c => a[c.idx]).filter(v => typeof v === 'number'));
-        };
+    /* ملخص الجاهزية لكل تصنيف أمني: [العدد، يعمل، عطل جزئي، عطل كلي]
+       لكل منطقة: [متحرك, ثابت]  (المتعطل = العدد - يعمل، يُحسب تلقائياً) */
 
-        // في الوضع العام: متوسط (الاتصالات + الأنظمة الأمنية) الموجود منهما فقط
-        const regionAvg = id => {
-            if (currentMode === 'general') {
-                const vals = ['comms', 'security'].map(m => modeAvg(m, id)).filter(v => v != null);
-                return vals.length ? mean(vals) : null;
-            }
-            return modeAvg(currentMode, id);
-        };
-
-        // المؤشرات التي تُعرض في لوحة المنطقة: [{key, label, v}]
-        const regionItems = id => currentMode === 'general' ?
-            GENERAL_SYSTEMS.map(([m, label]) => {
-                const v = modeAvg(m, id);
-                return v == null ? null : { key: m, label, v };
-            }).filter(Boolean) :
-            activeCats(currentMode, id).map(c => ({
-                key: c.key,
-                label: c.label,
-                v: (kpiStore[id] || [])[c.idx] ?? 0
-            }));
-
-        // معرّفات المناطق التي لها بيانات في الوضع الحالي
-        const regionIds = () => currentMode === 'general' ?
-            [...new Set([...Object.keys(MODES.comms.kpi), ...Object.keys(MODES.security.kpi)])] :
-            Object.keys(kpiStore);
-
-        const CIRC = 2 * Math.PI * 38;
-
-        // عدد وحدات الـ SVG لكل بكسل: لتثبيت حجم النقاط والنصوص مهما كان حجم الشاشة
-        const ppu = () => Math.min(mapStage.clientWidth / 1000, mapStage.clientHeight / 824) || .8;
-
-        function fitLabels() {
-            const w = mapStage.clientWidth || 800;
-            const k = Math.min(2, Math.max(1, 620 / w));
-            mapLabels.querySelectorAll('text').forEach(t => {
-                if (!t.dataset.fs) t.dataset.fs = t.getAttribute('font-size');
-                t.style.fontSize = (t.dataset.fs * k) + 'px';
-                t.querySelectorAll('tspan[dy]').forEach(sp => {
-                    if (!sp.dataset.dy) sp.dataset.dy = sp.getAttribute('dy');
-                    sp.setAttribute('dy', sp.dataset.dy * k);
-                });
-            });
-            mapLabels.style.strokeWidth = (3.5 * k) + 'px';
+    //    [متحرك ، متحرك 2 ،عطل جزئي ، عطل كلي ] [ثابت ، ثابت]
+    const READINESS_INPUT = {
+        cameras: { // ساجم
+            SA01: [[2,2,0,0],[1,1,0,0]], SA02: [[8,6,5,2],[3,3,0,0]], SA03: [[0,0,0,0],[0,0,0,0]],
+            SA04: [[11,5,4,9],[13,10,0,0]], SA06: [[4,4,2,2],[7,7,0,0]], SA07: [[6,3,2,4],[8,7,0,0]],
+            SA09: [[7,6,3,2],[1,0,0,0]], SA10: [[8,6,5,3],[6,5,0,0]], SA11: [[13,9,1,7],[6,3,0,0]],
+            SA13: [[9,3,1,9],[6,3,0,0]]
+        },
+        alarms: { // زالي
+            SA01: [[2,2,0,0],[0,0,0,0]], SA02: [[2,2,0,0],[6,5,0,1]], SA03: [[1,1,0,0],[4,4,0,0]],
+            SA04: [[4,3,1,0],[7,7,0,0]], SA06: [[1,1,0,0],[3,2,1,0]], SA07: [[2,2,0,0],[2,1,0,1]],
+            SA09: [[1,0,0,1],[2,2,0,0]], SA10: [[2,1,1,0],[3,3,0,0]], SA11: [[1,1,0,0],[2,1,1,0]],
+            SA13: [[1,1,0,0],[1,1,0,0]]
+        },
+        access: { // فلير
+            SA01: [[2,2,0,0],[4,4,0,0]], SA02: [[3,3,0,0],[5,4,1,0]], SA03: [[2,1,1,0],[3,3,0,0]],
+            SA04: [[3,3,0,0],[6,5,0,1]], SA06: [[1,1,0,0],[2,2,0,0]], SA07: [[1,1,0,0],[2,1,1,0]],
+            SA09: [[1,1,0,0],[1,0,0,1]], SA10: [[2,2,0,0],[2,2,0,0]], SA11: [[1,0,1,0],[2,2,0,0]],
+            SA13: [[1,1,0,0],[1,1,0,0]]
         }
+    };
 
-        const CHEVRON = '<svg class="sep" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"></polyline></svg>';
+    const mkBucket = ([count, working, partial, full]) => ({
+        count, working, faulty: count - working, partial, full
+    });
 
-        function updateCrumbs() {
-            const parts = ['مرحبا ' + USER_NAME];
-            if (currentRegionId) parts.push(regionNames[currentRegionId]);
-            if (currentRegionId && dataView.style.display === 'flex' && currentCategory) parts.push(CAT_TITLES[
-                currentCategory]);
-            $('crumbs').innerHTML = parts.map((p, i) =>
-                `<span class="${i === parts.length - 1 ? 'cur' : ''}">${esc(p)}</span>`).join(CHEVRON);
-        }
+    const getReadiness = (cat, id) => {
+        const row = READINESS_INPUT[cat]?.[id] || [[0,0,0,0],[0,0,0,0]];
+        const mobile = mkBucket(row[0]), fixed = mkBucket(row[1]);
+        return {
+            total: {
+                count: mobile.count + fixed.count,
+                working: mobile.working + fixed.working,
+                faulty: mobile.faulty + fixed.faulty
+            },
+            mobile, fixed
+        };
+    };
 
-        function tickClock() {
-            const d = new Date();
-            $('clockTime').textContent = d.toLocaleTimeString('en-GB');
-            try {
-                $('clockDate').textContent = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura-nu-latn', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                });
-            } catch (e) {
-                $('clockDate').textContent = d.toLocaleDateString('ar');
-            }
-        }
-        tickClock();
-        setInterval(tickClock, 1000);
-        $('stamp').textContent = 'آخر تحديث ' + new Date().toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit'
+    const commsKpi = hasKeys(commsKpiRaw) ? commsKpiRaw : {
+        SA01: [92, 88, 76, 84, 95, 90],
+        SA02: [85, 79, 68, 81, 88, 83],
+        SA03: [78, 72, 64, 75, 82, 77],
+        SA04: [90, 86, 81, 89, 93, 87],
+        SA07: [66, 58, 49, 62, 71, 60],
+        SA09: [74, 69, 61, 70, 78, 72],
+        SA10: [63, 57, 46, 59, 68, 58],
+        SA11: [58, 52, 44, 55, 64, 56],
+        SA13: [58, 52, 44, 55, 64, 56],
+        SA06: [80, 75, 70, 77, 84, 79]
+    };
+    // مؤشرات الأنظمة الأمنية تُحسب من جدول الجاهزية: يعمل ÷ العدد (متحرك + ثابت)
+const securityKpi = (() => {
+    const out = {};
+    const keys = ['cameras', 'alarms', 'access']; // نفس ترتيب ساجم، زالي، فلير
+    const ids = new Set(Object.values(READINESS_INPUT).flatMap(c => Object.keys(c)));
+    ids.forEach(id => {
+        out[id] = keys.map(k => {
+            const t = getReadiness(k, id).total;
+            return t.count ? Math.round(t.working / t.count * 100) : null;
         });
+    });
+    return out;
+})();
 
-        function showTip(html, e) {
-            tip.innerHTML = html;
-            tip.classList.add('show');
-            const w = tip.offsetWidth,
-                h = tip.offsetHeight;
-            let x = e.clientX + 16,
-                y = e.clientY + 16;
-            if (x + w > innerWidth - 10) x = e.clientX - w - 16;
-            if (y + h > innerHeight - 10) y = e.clientY - h - 16;
-            tip.style.left = x + 'px';
-            tip.style.top = y + 'px';
-        }
-        const hideTip = () => tip.classList.remove('show');
+    const ICONS = {
+        tower: '<path d="M12 12v9M8 21h8M9 21l3-9 3 9" /><circle cx="12" cy="9" r="1.5" /><path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7" />',
+        antenna: '<circle cx="12" cy="12" r="2" /><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19a10 10 0 0 1 0-14" />',
+        device: '<rect x="6" y="8" width="12" height="13" rx="2" /><path d="M10 8l4-5M9 12h6M9 16h3" />',
+        exchange: '<rect x="3" y="4" width="18" height="6" rx="1.5" /><rect x="3" y="14" width="18" height="6" rx="1.5" /><path d="M7 7h.01M7 17h.01" />',
+        fiber: '<circle cx="3.5" cy="17" r="1.2" /><circle cx="20.5" cy="17" r="1.2" /><path d="M4.5 17c4 0 4-10 7.5-10s3.5 10 7.5 10" />',
+        wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />',
+        camera: '<path d="M3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M15 11l6-3v8l-6-3" />',
+        bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />',
+        lock: '<rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />'
+    };
 
-        let vbAnim;
+    const COMMS_CATS = [
+        { key: 'repeaters', label: 'محطات الإعادة', title: 'محطات الإعادة', icon: 'tower' },
+        { key: 'antennas', label: 'الهوائيات', title: 'الهوائيات', icon: 'antenna' },
+        { key: 'devices', label: 'الأجهزة', title: 'الأجهزة وملحقاتها', icon: 'device' },
+        { key: 'exchanges', label: 'السنترالات', title: 'السنترالات', icon: 'exchange' },
+        { key: 'fiberOptics', label: 'الألياف', title: 'الألياف البصرية', icon: 'fiber' },
+        { key: 'workshops', label: 'الورش', title: 'الورش والطاقم الفني', icon: 'wrench' }
+    ];
+    const SEC_CATS = [
+        { key: 'cameras', label: 'ساجم', title: 'ساجم', icon: 'camera' },
+        { key: 'alarms', label: 'زالي', title: 'زالي', icon: 'bell' },
+        { key: 'access', label: 'فلير', title: 'فلير', icon: 'lock' }
+    ];
+    const GENERAL_SYSTEMS = [
+        ['comms', 'الاتصالات'],
+        ['security', 'الأنظمة الأمنية']
+    ];
 
-        function setViewBox(target, dur) {
-            cancelAnimationFrame(vbAnim);
-            if (reduceMotion || !dur) {
-                svgMap.setAttribute('viewBox', target.join(' '));
-                return;
-            }
-            const c = svgMap.viewBox.baseVal;
-            const from = [c.x, c.y, c.width, c.height];
-            const t0 = performance.now();
-            const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-            (function step(now) {
-                const p = Math.min(1, (now - t0) / dur),
-                    e = ease(p);
-                svgMap.setAttribute('viewBox', from.map((f, i) => f + (target[i] - f) * e).join(' '));
-                if (p < 1) vbAnim = requestAnimationFrame(step);
-            })(t0);
-        }
+    const MODES = {
+        general: { title: 'عامة', cats: [], kpi: {}, data: {}, sweep: 'rgba(244,180,69,.16)' },
+        comms: { title: 'الاتصالات', cats: COMMS_CATS, kpi: commsKpi, data: commsData, sweep: 'rgba(76,201,240,.2)' },
+        security: { title: 'الأنظمة الأمنية', cats: SEC_CATS, kpi: securityKpi, data: securityData, sweep: 'rgba(255,92,108,.18)' }
+    };
 
-        /* ===================================================================
-           4) المؤشرات الدائرية
-           action: كود جافاسكربت يُنفَّذ عند الضغط (مثل setMode('comms')) بدل فتح جدول
-           =================================================================== */
-        function gaugeHTML(v, label, cat, size, big, action) {
-            const c = kpiColor(v);
-            const click = action ?
-                `onclick="${action}" onkeydown="if(event.key==='Enter'){${action}}" role="button" tabindex="0" title="عرض التفاصيل"` :
-                cat ?
-                `onclick="loadRegionalData('${cat}')" onkeydown="if(event.key==='Enter')loadRegionalData('${cat}')" role="button" tabindex="0" title="عرض الجدول"` :
-                '';
-            return `<div class="kpi ${big ? 'kpi-big' : ''} ${cat || action ? 'is-link' : ''}" style="--c:${c}" ${click}>
-        <svg viewBox="0 0 100 100" width="${size}" height="${size}">
-        <circle cx="50" cy="50" r="47" class="kpi-ticks"/>
-        <circle cx="50" cy="50" r="38" class="kpi-track"/>
-        <circle cx="50" cy="50" r="38" class="kpi-bar" stroke="${c}"
-            stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}"
-            data-offset="${CIRC * (1 - v / 100)}" transform="rotate(-90 50 50)"/>
-        <text x="50" y="50" class="kpi-val"><tspan class="n" data-v="${v}">0</tspan><tspan class="kpi-pct" dx="1">%</tspan></text>
-        </svg><span class="kpi-label">${label}</span></div>`;
-        }
+    let KPI_CATS = [];
+    let CAT_TITLES = {};
+    let CURRENT_CATS = [];
+    let kpiStore = MODES.general.kpi;
+    let regionalDataStore = MODES.general.data;
 
-        function animateKpis(el) {
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                el.querySelectorAll('.kpi-bar').forEach(b => b.style.strokeDashoffset = b.dataset.offset);
-                el.querySelectorAll('.kpi-val .n').forEach(n => {
-                    const to = +n.dataset.v;
-                    if (reduceMotion) {
-                        n.textContent = to;
-                        return;
-                    }
-                    const t0 = performance.now(),
-                        d = 1000;
-                    (function f(now) {
-                        const p = Math.min(1, (now - t0) / d);
-                        n.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
-                        if (p < 1) requestAnimationFrame(f);
-                    })(t0);
-                });
-            }));
-        }
+    const $ = id => document.getElementById(id);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const USER_NAME = @json(Auth::user()->name);
 
-        function renderKpis(el, items, size, clickable) {
-            el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, clickable ? i.key : null, size)).join('');
-            animateKpis(el);
-        }
+    const svgMap = $('saudiMap');
+    const resetMapBtn = $('resetMapBtn');
+    const mapTitle = $('mapTitle');
+    const mapSub = $('mapSub');
+    const mapStage = $('mapStage');
+    const dataView = $('dataView');
+    const dataTableContainer = $('dataTableContainer');
+    const devicesContainer = $('devicesContainer');
+    const readinessContainer = $('readinessContainer');
+    readinessContainer.className = 'readiness-box';
+    dataTableContainer.before(readinessContainer);
+    const tableBody = $('tableBody');
+    const tableHeader = $('tableHeader');
+    const mapLabels = $('map-labels');
+    const netNational = $('netNational');
+    const netRegion = $('netRegion');
+    const tip = $('tip');
+    const paths = document.querySelectorAll('#features path');
 
-        function renderNationalKpis() {
-            const general = currentMode === 'general';
-            let items;
-            if (general) {
-                items = GENERAL_SYSTEMS.map(([m, label]) => {
-                    const vals = regionIds().map(id => modeAvg(m, id)).filter(v => v != null);
-                    return vals.length ? { key: m, label, v: mean(vals) } : null;
-                }).filter(Boolean);
-            } else {
-                // كل تصنيف يُحسب من المناطق التي فيها بيانات له فقط
-                items = MODES[currentMode].cats.map((cat, idx) => {
-                    const vals = regionIds()
-                        .filter(id => catHasData(currentMode, id, cat.key))
-                        .map(id => kpiStore[id]?.[idx])
-                        .filter(v => typeof v === 'number');
-                    return vals.length ? { key: cat.key, label: cat.label, v: mean(vals) } : null;
-                }).filter(Boolean);
-            }
-            const total = mean(items.map(i => i.v));
+    let currentRegionId = null;
+    let currentCategory = null;
+    let currentMode = 'general';
+    let booted = false;
 
-            const overall = $('overallKpi');
-            overall.innerHTML = gaugeHTML(total, 'الجاهزية العامة', null, 150, true);
-            animateKpis(overall);
+    const regionNames = {};
+    paths.forEach(p => {
+        if (p.id) regionNames[p.id] = p.getAttribute('name');
+    });
 
-            const el = $('nationalKpis');
-            if (general) {
-                // الوضع العام: مؤشران، والضغط على أيٍّ منهما ينقلك لوضعه
-                el.className = 'kpi-grid kpi-duo';
-                el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, null, 96, false, `setMode('${i.key}')`)).join('');
-                animateKpis(el);
-            } else {
-                el.className = 'kpi-grid';
-                renderKpis(el, items, 78, false);
-            }
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    } [m]));
+    const statusOf = v => v >= 80 ? {
+        k: 'ok',
+        t: 'جاهز'
+    } : v >= 60 ? {
+        k: 'mid',
+        t: 'يحتاج متابعة'
+    } : {
+        k: 'crit',
+        t: 'حرج'
+    };
+    const kpiColor = v => v >= 80 ? '#2ee6a6' : v >= 60 ? '#ffb224' : '#ff5c6c';
+    const rawAvg = r => r && r.length ? Math.round(r.reduce((a, b) => a + b, 0) / r.length) : null;
+    const mean = a => a.length ? Math.round(a.reduce((s, v) => s + v, 0) / a.length) : 0;
 
-            const cnt = { ok: 0, mid: 0, crit: 0 };
-            regionIds().forEach(id => {
-                const v = regionAvg(id);
-                if (v != null) cnt[statusOf(v).k]++;
-            });
-            $('statusStrip').innerHTML = `
-                <div class="st ok"><b>${cnt.ok}</b><span>مناطق جاهزة</span></div>
-                <div class="st mid"><b>${cnt.mid}</b><span>تحتاج متابعة</span></div>
-                <div class="st crit"><b>${cnt.crit}</b><span>مناطق حرجة</span></div>`;
-        }
-
-        // أزرار التصنيفات في لوحة المنطقة: فقط التي لها بيانات في هذه المنطقة
-        function renderActions(id) {
-            const cats = id ? activeCats(currentMode, id) : [];
-            $('infoActions').innerHTML = cats.map(c => `
-                <button class="action-btn" data-cat="${c.key}" onclick="loadRegionalData('${c.key}')">
-                  <svg viewBox="0 0 24 24">${ICONS[c.icon] || ''}</svg><span>${c.title}</span><em></em>
-                </button>`).join('');
-        }
-
-        function renderRegionPanel(id) {
-            const general = currentMode === 'general';
-            const items = regionItems(id);
-            renderActions(id); // لازم قبل renderRegionHead لأنها تحدّث عدّاد الأزرار
-            renderRegionHead(id);
-            // نخفي أزرار التصنيفات فقط (زر تقرير المنطقة يبقى ظاهراً)
-            $('infoActions').style.display = general ? 'none' : 'contents';
-            $('regionHint').textContent = !items.length ?
-                'لا توجد بيانات مسجّلة لهذه المنطقة.' :
-                general ? 'اضغط على النظام لعرض تفاصيله:' : 'اختر التصنيف لعرض الجدول:';
-            const el = $('regionKpis');
-            if (general) {
-                el.className = 'kpi-grid kpi-duo';
-                el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, null, 96, false, `setMode('${i.key}')`)).join('');
-                animateKpis(el);
-            } else {
-                el.className = 'kpi-grid';
-                renderKpis(el, items, 74, true);
-            }
-        }
-
-        function renderRegionHead(id) {
-            const items = regionItems(id);
-            const avg = regionAvg(id);
-            if (!items.length || avg == null) {
-                $('regionOverall').innerHTML = `<div class="region-hero">
-                <div class="hero-text">
-                  <span class="chip">لا توجد بيانات</span>
-                  <p>لا توجد بيانات مسجّلة لهذه المنطقة في هذا العرض.</p>
-                </div></div>`;
-            } else {
-                const s = statusOf(avg);
-                const weak = items.reduce((m, i) => i.v < m.v ? i : m, items[0]);
-                $('regionOverall').innerHTML = `<div class="region-hero">
-                ${gaugeHTML(avg, 'الجاهزية العامة', null, 108, true)}
-                <div class="hero-text">
-                  <span class="chip ${s.k}">${s.t}</span>
-                  <p>أدنى مؤشر في المنطقة:<br><b>${esc(weak.label)}</b> بنسبة <b>${weak.v}%</b></p>
-                </div></div>`;
-                animateKpis($('regionOverall'));
-            }
-            $('regionCode').textContent = id;
-
-            // عدّاد السجلات على أزرار التصنيفات (من بيانات الداتابيز)
-            document.querySelectorAll('.action-btn[data-cat]').forEach(b => {
-                const d = regionalDataStore[id]?.[b.dataset.cat];
-                b.querySelector('em').textContent = Array.isArray(d) ? d.length : '0';
-                b.classList.remove('is-active');
-            });
-        }
-
-        /* ===================================================================
-           5) شبكة المحطات على الخريطة (معرّفات الكود القديم)
-           =================================================================== */
-        const mulberry32 = a => () => {
-            a |= 0;
-            a = a + 0x6D2B79F5 | 0;
-            let t = Math.imul(a ^ a >>> 15, 1 | a);
-            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-            return ((t ^ t >>> 14) >>> 0) / 4294967296;
-        };
-        const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-
-        const HUBS = {
-            SA01: [520, 482], // الرياض
-            SA02: [285, 572], // مكة المكرمة
-            SA03: [218, 408], // المدينة المنورة
-            SA04: [700, 492], // الشرقية
-            SA05: [412, 388], // القصيم
-            SA08: [340, 302], // حائل
-            SA07: [112, 292], // تبوك
-            SA09: [428, 192], // الحدود الشمالية
-            SA10: [397, 776], // جازان
-            SA11: [545, 736], // نجران
-            BAHA: [338, 646], // الباحة
-            SA13: [225, 198], // الجوف
-            SA06: [410, 684] // عسير
-        };
-
-        function buildNationalNet() {
-            const hq = HUBS.SA01,
-                u = 1 / ppu();
-            let lines = '',
-                nodes = '';
-            Object.entries(HUBS).forEach(([id, [x, y]]) => {
-                const v = regionAvg(id);
-                const col = v == null ? null : statusOf(v).k;
-                if (id !== 'SA01') {
-                    const dx = hq[0] - x,
-                        dy = hq[1] - y,
-                        len = Math.hypot(dx, dy) || 1,
-                        off = len * .12;
-                    const cx = (x + hq[0]) / 2 - dy / len * off,
-                        cy = (y + hq[1]) / 2 + dx / len * off;
-                    lines +=
-                        `<path class="link${v == null ? ' dim' : ''}" d="M${x} ${y}Q${cx} ${cy} ${hq[0]} ${hq[1]}"/>`;
-                }
-                if (id === 'SA01') {
-                    nodes +=
-                        `<circle class="ping hub" cx="${x}" cy="${y}" r="${(6.5 * u).toFixed(1)}"/><circle class="node hub ok" cx="${x}" cy="${y}" r="${(7.5 * u).toFixed(1)}"/>`;
-                } else if (col) {
-                    nodes += (col === 'crit' ?
-                            `<circle class="ping crit" cx="${x}" cy="${y}" r="${(5 * u).toFixed(1)}"/>` : '') +
-                        `<circle class="node ${col}" cx="${x}" cy="${y}" r="${(5 * u).toFixed(1)}"/>`;
-                } else {
-                    nodes += `<circle class="node off" cx="${x}" cy="${y}" r="${(4 * u).toFixed(1)}"/>`;
-                }
-            });
-            netNational.innerHTML = lines + nodes;
-        }
-
-        function buildRegionMesh(path) {
-            const id = path.id,
-                bb = path.getBBox(),
-                rnd = mulberry32(hash(id)),
-                rnd2 = mulberry32(hash(id + currentMode)), // حالات النقاط تتغير حسب الوضع
-                v = regionAvg(id) || 60;
-            const pts = [],
-                pt = svgMap.createSVGPoint(),
-                minD = Math.max(bb.width, bb.height) / 7.5;
-            for (let i = 0; i < 4000 && pts.length < 18; i++) {
-                pt.x = bb.x + rnd() * bb.width;
-                pt.y = bb.y + rnd() * bb.height;
-                if (!path.isPointInFill(pt)) continue;
-                if (pts.some(p => Math.hypot(p.x - pt.x, p.y - pt.y) < minD)) continue;
-                pts.push({
-                    x: pt.x,
-                    y: pt.y
-                });
-            }
-            if (pts.length < 2) {
-                netRegion.innerHTML = '';
-                return;
-            }
-
-            const cx = bb.x + bb.width / 2,
-                cy = bb.y + bb.height / 2;
-            pts.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
-            pts.forEach((p, i) => {
-                const r = rnd2() * 100;
-                p.hub = i === 0;
-                p.s = p.hub ? 'ok' : r < v - 8 ? 'ok' : r < v + 18 ? 'mid' : 'crit';
-            });
-
-            const seen = new Set();
-            let lines = '';
-            pts.forEach((p, i) => {
-                const take = i === 0 ? 3 : 2;
-                pts.map((q, j) => ({
-                        j,
-                        d: Math.hypot(p.x - q.x, p.y - q.y)
-                    }))
-                    .filter(o => o.j !== i).sort((a, b) => a.d - b.d).slice(0, take)
-                    .forEach(o => {
-                        const key = i < o.j ? i + '-' + o.j : o.j + '-' + i;
-                        if (seen.has(key)) return;
-                        seen.add(key);
-                        const q = pts[o.j];
-                        lines +=
-                            `<line class="link" x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}"/>`;
-                    });
-            });
-
-            // حجم النقاط يتكيّف مع مستوى التكبير وحجم الشاشة
-            const sc = Math.min((mapStage.clientWidth || 800) / (bb.width + 80), (mapStage.clientHeight || 600) / (bb
-                .height + 80)) || 1;
-            const R = Math.min(16, Math.max(3, 6.5 / sc));
-            const labels = {
-                ok: 'جاهزة',
-                mid: 'تحتاج متابعة',
-                crit: 'حرجة'
-            };
-            let nodes = '';
-            pts.forEach((p, i) => {
-                const nn = String(i + 1).padStart(2, '0');
-                const name = p.hub ? 'المحطة الرئيسية للمنطقة' : `محطة رقم ${nn}`;
-                const r = p.hub ? R * 1.5 : R;
-                if (p.hub || p.s === 'crit') nodes +=
-                    `<circle class="ping ${p.hub ? 'hub' : p.s}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}"/>`;
-                nodes +=
-                    `<circle class="node ${p.s}${p.hub ? ' hub' : ''}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" data-name="${name}" data-k="${p.s}" data-t="${labels[p.s]}"/>`;
-            });
-            netRegion.innerHTML = lines + nodes;
-        }
-
-        /* ===================================================================
-           6) الجداول (بيانات الداتابيز)
-           =================================================================== */
-        function toggleDetail(btn, rowIdx) {
-            const detailRowId = 'detail-' + rowIdx;
-            const existing = document.getElementById(detailRowId);
-            if (existing) {
-                existing.remove();
-                btn.textContent = 'التفاصيل';
-                return;
-            }
-            const data = regionalDataStore[currentRegionId]?.workshops || [];
-            const row = data[rowIdx];
-            if (!row) return;
-
-            const engineersList = Array.isArray(row.engineers) ? row.engineers : [];
-            const techniciansList = Array.isArray(row.technicians) ? row.technicians : [];
-            const maxRows = Math.max(engineersList.length, techniciansList.length, 1);
-
-            let bodyRows = '';
-            for (let i = 0; i < maxRows; i++) {
-                const engName = engineersList[i] ? `${i + 1}. ${esc(engineersList[i])}` : '';
-                const techName = techniciansList[i] ? `${i + 1}. ${esc(techniciansList[i])}` : '';
-                bodyRows += `<tr><td>${engName}</td><td>${techName}</td></tr>`;
-            }
-
-            const tr = document.createElement('tr');
-            tr.id = detailRowId;
-            tr.className = 'detail-row';
-            tr.innerHTML = `<td colspan="4">
-        <table class="detail-inner-table">
-          <thead><tr>
-            <th>المهندسين (${esc(row.engineers_count)})</th>
-            <th>الفنيين (${esc(row.technicians_count)})</th>
-          </tr></thead>
-          <tbody>${bodyRows}</tbody>
-        </table>
-      </td>`;
-            btn.closest('tr').insertAdjacentElement('afterend', tr);
-            btn.textContent = 'إخفاء';
-        }
-
-        const emptyRow = n => `<tr><td colspan="${n}" class="empty">لا توجد بيانات مسجّلة لهذا التصنيف حتى الآن</td></tr>`;
-
-        const ASSET_CATS = ['repeaters', 'antennas', 'exchanges'];
-
-        function statusBadge(row) {
-            const allowed = ['active', 'faulty', 'maintenance', 'retired'];
-            const key = allowed.includes(row.status) ? row.status : 'none';
-            return `<span class="status-badge status-${key}">${esc(row.status_label || 'غير محدد')}</span>`;
-        }
-
-        function imgCell(row) {
-            if (!row.image) return '—';
-            const src = esc(row.image);
-            return `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" class="asset-thumb" alt=""></a>`;
-        }
-
-        function assetCells(row) {
-            return `<td>${esc(row.serial_number || '—')}</td><td>${statusBadge(row)}</td><td>${imgCell(row)}</td>`;
-        }
-
-        function calcTotal(category, data) {
-            if (!Array.isArray(data)) return 0;
-            switch (category) {
-                case 'workshops':
-                    return data.reduce((s, r) =>
-                        s + (Number(r.engineers_count) || 0) + (Number(r.technicians_count) || 0), 0);
-                case 'exchanges':
-                    return data.filter(r => r.type).length;
-                case 'devices':
-                    return data.length;
-                default: // repeaters / antennas / fiberOptics / cameras / alarms / access
-                    return data.reduce((s, r) =>
-                        s + (r.count != null && r.count !== '' ? (Number(r.count) || 0) : 1), 0);
-            }
-        }
-
-        const cntOf = r => r.count ?? (currentMode === 'security' ? 1 : '');
-
-        function loadRegionalData(category) {
-            // الوضع العام لا يعرض جداول (الضغط على المؤشر ينقل لوضع الاتصالات/الأمنية)
-            if (!currentRegionId || currentMode === 'general') return;
-            const data = regionalDataStore[currentRegionId]?.[category] || [];
-            currentCategory = category;
-            hideTip();
-
-            mapStage.classList.add('hidden-element');
-            dataView.style.display = 'flex';
-            $('dvTitle').textContent = CAT_TITLES[category];
-            $('dvCount').textContent = data.length + ' سجل';
-            $('dvTotal').textContent = 'الإجمالي: ' + calcTotal(category, data);
-            $('dvSearch').value = '';
-            mapTitle.innerText = regionNames[currentRegionId];
-            document.querySelectorAll('.action-btn[data-cat]').forEach(b => b.classList.toggle('is-active', b.dataset
-                .cat === category));
-            updateCrumbs();
-
-            if (category === 'devices') {
-                dataTableContainer.style.display = 'none';
-                renderDevices(data);
-                return;
-            }
-            devicesContainer.style.display = 'none';
-            dataTableContainer.style.display = 'block';
-
-            if (category === 'exchanges') {
-                tableHeader.innerHTML =
-                    `<tr><th>النوع</th><th>الإصدار</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
-                tableBody.innerHTML = data.length ?
-                    data.map(row => `<tr>
-                <td>${esc(row.type)}</td><td>${esc(row.sw)}</td><td>${esc(row.location)}</td>
-                ${assetCells(row)}
-            </tr>`).join('') :
-                    emptyRow(6);
-
-            } else if (category === 'workshops') {
-                tableHeader.innerHTML = `<tr><th>اسم الورشة</th><th>الموقع</th><th>عدد الموظفين</th><th>التفاصيل</th></tr>`;
-                tableBody.innerHTML = data.length ?
-                    data.map((row, i) => `<tr>
-                <td>${esc(row.name)}</td>
-                <td>${esc(row.location)}</td>
-                <td>${(Number(row.engineers_count) || 0) + (Number(row.technicians_count) || 0)}</td>
-                <td><button class="expand-btn" onclick="toggleDetail(this, ${i})">التفاصيل</button></td>
-            </tr>`).join('') :
-                    emptyRow(4);
-
-            } else if (ASSET_CATS.includes(category) ||
-                (category !== 'fiberOptics' && data.some(r => r.serial_number || r.status))) {
-                // محطات الإعادة والهوائيات (+ جداول الأنظمة الأمنية إذا كانت سجلاتها فيها رقم تسلسلي/حالة)
-                tableHeader.innerHTML =
-                    `<tr><th>النوع</th><th>العدد</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
-                tableBody.innerHTML = data.length ?
-                    data.map(row => `<tr>
-                <td>${esc(row.item ?? row.name)}</td>
-                <td>${esc(cntOf(row))}</td>
-                <td>${esc(row.loc ?? row.location)}</td>
-                ${assetCells(row)}
-            </tr>`).join('') :
-                    emptyRow(6);
-
-            } else {
-                // الألياف البصرية + جداول الأنظمة الأمنية البسيطة: نوع / عدد / موقع
-                tableHeader.innerHTML = `<tr><th>النوع</th><th>العدد</th><th>الموقع</th></tr>`;
-                tableBody.innerHTML = data.length ?
-                    data.map(row => `<tr>
-                <td>${esc(row.item ?? row.name)}</td>
-                <td>${esc(cntOf(row))}</td>
-                <td>${esc(row.loc ?? row.location)}</td>
-            </tr>`).join('') :
-                    emptyRow(3);
-            }
-        }
-
-        /* ===================================================================
-           7) بطاقات الأجهزة وملحقاتها
-           =================================================================== */
-        const DEVICE_PLACEHOLDER = `<svg class="ph" width="56" height="56" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V4M16 7V4"/>
-        <circle cx="12" cy="13" r="3"/></svg>`;
-
-        const STATUS_COLORS = {
-            active: '#2ee6a6',
-            faulty: '#ff5c6c',
-            maintenance: '#ffb224',
-            retired: '#8890b5'
-        };
-
-        function renderDevices(data) {
-            const cards = data.map(d => {
-                const name = d.name ?? d.item ?? '—';
-                const location = d.location ?? d.loc ?? '—';
-                const serial = d.serial_number ?? d.serial ?? '—';
-                const hasReadiness = d.readiness !== null && d.readiness !== undefined && d.readiness !== '';
-                const pct = hasReadiness ? Math.max(0, Math.min(100, Number(d.readiness) || 0)) : null;
-
-                // اللون: الحالة المحددة أولاً، ثم الجاهزية، ثم رمادي
-                const color = STATUS_COLORS[d.status] || (pct !== null ? kpiColor(pct) : '#8890b5');
-                const badge = d.status_label || (pct !== null ? statusOf(pct).t : 'غير محدد');
-
-                const accessories = Array.isArray(d.accessories) ?
-                    d.accessories :
-                    (d.accessories ? String(d.accessories).split(',') : []);
-
-                return `
-        <div class="device-card" style="border-top-color:${color}">
-          <div class="device-img">
-            ${DEVICE_PLACEHOLDER}
-            ${d.image ? `<img src="${esc(d.image)}" alt="${esc(name)}" loading="lazy" onerror="this.remove()">` : ''}
-            <span class="device-badge" style="background:${color}">${esc(badge)}</span>
-          </div>
-          <div class="device-body">
-            <h4 class="device-title">${esc(name)}</h4>
-            <div class="device-info">
-
-              <div><span>الرقم التسلسلي</span><span>${esc(serial)}</span></div>
-              <div><span>الموقع</span><span>${esc(location)}</span></div>
-              ${d.count != null ? `<div><span>العدد</span><span>${esc(d.count)}</span></div>` : ''}
-            </div>
-            ${accessories.length ? `<div class="device-chips">${accessories.map(a => `<small>${esc(String(a).trim())}</small>`).join('')}</div>` : ''}
-            ${pct !== null ? `
-                <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
-                <div class="device-ready-track">
-                  <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
-                </div>` : ''}
-          </div>
-        </div>`;
-            }).join('');
-
-            devicesContainer.innerHTML = data.length ?
-                `<div class="devices-grid">${cards}</div>` :
-                '<p class="dv-empty">لا توجد أجهزة مسجّلة لهذه المنطقة حتى الآن</p>';
-            devicesContainer.style.display = 'block';
-
-            requestAnimationFrame(() => requestAnimationFrame(() =>
-                devicesContainer.querySelectorAll('.device-ready-bar').forEach(b => b.style.width = b.dataset.w +
-                    '%')));
-        }
-
-        /* ---- البحث داخل الجدول / البطاقات ---- */
-        $('dvSearch').addEventListener('input', e => {
-            const q = e.target.value.trim().toLowerCase();
-            if (currentCategory === 'devices') {
-                devicesContainer.querySelectorAll('.device-card').forEach(c => {
-                    c.style.display = c.textContent.toLowerCase().includes(q) ? '' : 'none';
-                });
-                return;
-            }
-            tableBody.querySelectorAll('tr:not(.detail-row)').forEach(r => {
-                const hit = r.textContent.toLowerCase().includes(q);
-                r.style.display = hit ? '' : 'none';
-                const nx = r.nextElementSibling;
-                if (nx && nx.classList.contains('detail-row')) nx.style.display = hit ? '' : 'none';
-            });
-        });
-
-        /* ===================================================================
-           8) الخريطة: التفاعل
-           =================================================================== */
-        function showRegionMap() {
-            dataView.style.display = 'none';
-            mapStage.classList.remove('hidden-element');
-            currentCategory = null;
-            document.querySelectorAll('.action-btn[data-cat]').forEach(b => b.classList.remove('is-active'));
-            mapTitle.innerText = regionNames[currentRegionId] || 'خريطة المناطق الإدارية';
-            updateCrumbs();
-        }
-
-        paths.forEach(path => {
-            if (path.classList.contains('no-click') || !path.id) return;
-            path.classList.add('region');
-            const v = regionAvg(path.id);
-            if (v != null) path.style.setProperty('--rc', kpiColor(v));
-            path.setAttribute('tabindex', '0');
-            path.setAttribute('role', 'button');
-            path.setAttribute('aria-label', path.getAttribute('name'));
-
-            const open = function() {
-                const bbox = this.getBBox();
-                currentRegionId = this.id;
-                updateReportLinks();
-                currentCategory = null;
-                // زر التقرير يظهر للأدمن فقط، لذلك نتأكد من وجوده قبل تعيين الرابط
-                setViewBox([bbox.x - 40, bbox.y - 40, bbox.width + 80, bbox.height + 80], 750);
-                paths.forEach(p => {
-                    p.classList.add('hidden-region');
-                    p.classList.remove('active-region');
-                });
-                this.classList.remove('hidden-region');
-                this.classList.add('active-region');
-
-                mapTitle.innerText = this.getAttribute('name');
-                mapSub.textContent = 'تظهر النقاط حالة محطات المنطقة، مرّر المؤشر فوق أي نقطة';
-                $('defaultContent').style.display = 'none';
-                $('regionDetail').style.display = 'flex';
-                $('regionName').innerText = this.getAttribute('name');
-                resetMapBtn.style.display = 'flex';
-                renderRegionPanel(this.id);
-                dataView.style.display = 'none';
-                mapStage.classList.remove('hidden-element');
-
-                buildRegionMesh(this);
-                netNational.classList.add('is-off');
-                netRegion.classList.remove('is-off');
-                netRegion.classList.add('interactive');
-                mapLabels.classList.add('is-off');
-                hideTip();
-                updateCrumbs();
-            };
-            path.addEventListener('click', open);
-            path.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    open.call(this);
-                }
-            });
-        });
-
-        svgMap.addEventListener('pointermove', e => {
-            const t = e.target;
-            if (t.classList.contains('node') && t.dataset.name) {
-                showTip(`<b>${t.dataset.name}</b><span class="${t.dataset.k}">الحالة: ${t.dataset.t}</span>`, e);
-                return;
-            }
-            if (t.classList.contains('region') && !t.classList.contains('active-region') && !t.classList.contains(
-                    'hidden-region')) {
-                const v = regionAvg(t.id);
-                showTip(`<b>${esc(t.getAttribute('name'))}</b>
-          ${v == null ? '' : `<span>الجاهزية العامة <strong class="${statusOf(v).k}">${v}%</strong></span>`}
-          <small>اضغط لعرض التفاصيل</small>`, e);
-                return;
-            }
-            hideTip();
-        });
-        svgMap.addEventListener('pointerleave', hideTip);
-        svgMap.addEventListener('pointerup', e => {
-            if (e.pointerType === 'touch') setTimeout(hideTip, 1800);
-        });
-
-        function resetAll() {
-            setViewBox([0, 0, 1000, 824], 650);
-            mapStage.classList.remove('hidden-element');
-            dataView.style.display = 'none';
-            mapTitle.innerText = "خريطة المناطق الإدارية";
-            mapSub.textContent = 'اضغط على أي منطقة لتكبيرها وعرض بياناتها';
-            paths.forEach(p => p.classList.remove('hidden-region', 'active-region'));
-            $('defaultContent').style.display = 'block';
-            $('regionDetail').style.display = 'none';
-            resetMapBtn.style.display = 'none';
-
-            netRegion.classList.add('is-off');
-            netRegion.classList.remove('interactive');
-            setTimeout(() => {
-                if (!currentRegionId) netRegion.innerHTML = '';
-            }, 600);
-            netNational.classList.remove('is-off');
-            mapLabels.classList.remove('is-off');
-            currentRegionId = null;
-            currentCategory = null;
-            hideTip();
-            updateCrumbs();
-        }
-
-        resetMapBtn.addEventListener('click', resetAll);
-        $('dvBack').addEventListener('click', showRegionMap);
-        document.addEventListener('keydown', e => {
-            if (e.key !== 'Escape') return;
-            if (dataView.style.display === 'flex') showRegionMap();
-            else if (currentRegionId) resetAll();
-        });
-
-        /* ===================================================================
-           9) شريط التنبيهات (يُبنى تلقائياً من مؤشرات الوضع الحالي)
-           يعمل فقط إذا كان الـ footer (tickerTrack) موجوداً في الصفحة.
-           =================================================================== */
-        function buildTicker() {
-            const track = $('tickerTrack');
-            if (!track) return;
-            const sources = currentMode === 'general' ? ['comms', 'security'] : [currentMode];
-            const items = [];
-            sources.forEach(m => {
-                Object.keys(MODES[m].kpi).forEach(id => {
-                    if (!regionNames[id]) return;
-                    activeCats(m, id).forEach(c => {
-                        const v = MODES[m].kpi[id][c.idx];
-                        if (typeof v === 'number' && v < 70) items.push({ id, v, cat: c.label });
-                    });
-                });
-            });
-            items.sort((a, b) => a.v - b.v);
-            const top = items.slice(0, 14);
-            const html = top.map(o => {
-                const k = o.v < 60 ? 'crit' : 'mid';
-                return `<span class="ti ${k}"><i></i>${k === 'crit' ? 'حرج' : 'متابعة'}: ${esc(o.cat)} في ${esc(regionNames[o.id])} <b>${o.v}%</b></span>`;
-            }).join('');
-            track.innerHTML = html + html;
-            track.style.animationDuration = Math.max(40, top.length * 7) + 's';
-        }
-
-        /* ===================================================================
-           10) تسجيل الخروج: يتم عبر فورم Laravel + CSRF في الأعلى (لا يحتاج جافاسكربت)
-           =================================================================== */
-
-        /* ===================================================================
-           11) أوضاع العرض (عامة / الاتصالات / الأنظمة الأمنية) + التشغيل
-           =================================================================== */
-           console.log('SECURITY DATA:', securityData);
-console.log('SECURITY KPI (raw):', securityKpiRaw);
-Object.keys(securityData).forEach(id =>
-    console.log(id, '→', regionNames[id] || '❌ معرّف غير معروف', Object.keys(securityData[id] || {}))
-);
-
-const REPORTS = {
-
-    comms:    { all: @json(route('regions.report.all')),
-                region: id => `/region/${id}/report`,
-                allLabel: 'تقرير الاتصالات (جميع المناطق)',
-                regionLabel: 'تحميل تقرير الاتصالات' },
-    security: { all: @json(route('regions.security.report.all')),
-                region: id => `/region/${id}/security-report`,
-                allLabel: 'تقرير الأنظمة الأمنية (جميع المناطق)',
-                regionLabel: 'تحميل تقرير الأنظمة الأمنية' }
+   const catHasData = (m, id, key) => {
+    if (m === 'security') return true; // الأزرار الأمنية تظهر دائماً حتى لو ما فيه داتا
+    const d = MODES[m].data[id]?.[key];
+    if (!Array.isArray(d) || !d.length) return false;
+    return key === 'workshops' ? true : calcTotal(key, d) > 0;
 };
 
-function updateReportLinks() {
-    const r = REPORTS[currentMode];
-    const all = $('allReportBtn');          // يوجد للأدمن فقط
-    if (all) {
-        all.href = r.all;
-        $('allReportLabel').textContent = r.allLabel;
-    }
-    const rb = $('downloadReportBtn');      // يوجد للأدمن فقط
-    if (rb) {
-        rb.href = currentRegionId ? r.region(currentRegionId) : '#';
-        $('regionReportLabel').textContent = r.regionLabel;
-    }
-}
+    const activeCats = (m, id) => MODES[m].cats
+        .map((cat, idx) => ({ ...cat, idx }))
+        .filter(c => catHasData(m, id, c.key));
 
-        function setMode(key) {
-            if (!MODES[key]) return;
-            currentMode = key;
-            kpiStore = MODES[key].kpi;
-            regionalDataStore = MODES[key].data;
-            CURRENT_CATS = MODES[key].cats;
-            KPI_CATS = key === 'general' ? GENERAL_SYSTEMS : CURRENT_CATS.map(c => [c.key, c.label]);
-            CAT_TITLES = Object.fromEntries(CURRENT_CATS.map(c => [c.key, c.title]));
+    const modeAvg = (m, id) => {
+        const a = MODES[m].kpi[id];
+        if (!a) return null;
+        return rawAvg(activeCats(m, id).map(c => a[c.idx]).filter(v => typeof v === 'number'));
+    };
 
-            document.querySelectorAll('.seg-btn').forEach(b => {
-                const on = b.dataset.mode === key;
-                b.classList.toggle('is-active', on);
-                b.setAttribute('aria-selected', on);
+    const regionAvg = id => {
+        if (currentMode === 'general') {
+            const vals = ['comms', 'security'].map(m => modeAvg(m, id)).filter(v => v != null);
+            return vals.length ? mean(vals) : null;
+        }
+        return modeAvg(currentMode, id);
+    };
+
+    const regionItems = id => currentMode === 'general' ?
+    GENERAL_SYSTEMS.map(([m, label]) => {
+        const v = modeAvg(m, id);
+        return v == null ? null : { key: m, label, v };
+    }).filter(Boolean) :
+    activeCats(currentMode, id).map(c => ({
+        key: c.key,
+        label: c.label,
+        v: (kpiStore[id] || [])[c.idx] ?? (currentMode === 'security' ? null : 0)
+    })).filter(i => i.v !== null);
+
+    const regionIds = () => currentMode === 'general' ?
+        [...new Set([...Object.keys(MODES.comms.kpi), ...Object.keys(MODES.security.kpi)])] :
+        Object.keys(kpiStore);
+
+    const CIRC = 2 * Math.PI * 38;
+
+    const ppu = () => Math.min(mapStage.clientWidth / 1000, mapStage.clientHeight / 824) || .8;
+
+    function fitLabels() {
+        const w = mapStage.clientWidth || 800;
+        const k = Math.min(2, Math.max(1, 620 / w));
+        mapLabels.querySelectorAll('text').forEach(t => {
+            if (!t.dataset.fs) t.dataset.fs = t.getAttribute('font-size');
+            t.style.fontSize = (t.dataset.fs * k) + 'px';
+            t.querySelectorAll('tspan[dy]').forEach(sp => {
+                if (!sp.dataset.dy) sp.dataset.dy = sp.getAttribute('dy');
+                sp.setAttribute('dy', sp.dataset.dy * k);
             });
-            $('modeName').textContent = MODES[key].title;
-            mapStage.style.setProperty('--sw', MODES[key].sweep);
+        });
+        mapLabels.style.strokeWidth = (3.5 * k) + 'px';
+    }
 
-            document.querySelectorAll('#features path.region').forEach(p => {
-                const v = regionAvg(p.id);
-                if (v != null) p.style.setProperty('--rc', kpiColor(v));
-                else p.style.removeProperty('--rc');
+    const CHEVRON = '<svg class="sep" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"></polyline></svg>';
+
+    function updateCrumbs() {
+        const parts = ['مرحبا ' + USER_NAME];
+        if (currentRegionId) parts.push(regionNames[currentRegionId]);
+        if (currentRegionId && dataView.style.display === 'flex' && currentCategory) parts.push(CAT_TITLES[
+            currentCategory]);
+        $('crumbs').innerHTML = parts.map((p, i) =>
+            `<span class="${i === parts.length - 1 ? 'cur' : ''}">${esc(p)}</span>`).join(CHEVRON);
+    }
+
+    function tickClock() {
+        const d = new Date();
+        $('clockTime').textContent = d.toLocaleTimeString('en-GB');
+        try {
+            $('clockDate').textContent = d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura-nu-latn', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
             });
-            buildNationalNet();
-            buildTicker();
-            if (booted) renderNationalKpis();
+        } catch (e) {
+            $('clockDate').textContent = d.toLocaleDateString('ar');
+        }
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+    $('stamp').textContent = 'آخر تحديث ' + new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
-            if (currentRegionId) {
-                renderRegionPanel(currentRegionId);
-                buildRegionMesh(document.getElementById(currentRegionId));
-                if (dataView.style.display === 'flex') {
-                    if (key === 'general') showRegionMap();
-                    else if (currentCategory && CAT_TITLES[currentCategory] && catHasData(key, currentRegionId, currentCategory)) loadRegionalData(currentCategory);
-                    else showRegionMap();
+    function showTip(html, e) {
+        tip.innerHTML = html;
+        tip.classList.add('show');
+        const w = tip.offsetWidth,
+            h = tip.offsetHeight;
+        let x = e.clientX + 16,
+            y = e.clientY + 16;
+        if (x + w > innerWidth - 10) x = e.clientX - w - 16;
+        if (y + h > innerHeight - 10) y = e.clientY - h - 16;
+        tip.style.left = x + 'px';
+        tip.style.top = y + 'px';
+    }
+    const hideTip = () => tip.classList.remove('show');
+
+    let vbAnim;
+
+    function setViewBox(target, dur) {
+        cancelAnimationFrame(vbAnim);
+        if (reduceMotion || !dur) {
+            svgMap.setAttribute('viewBox', target.join(' '));
+            return;
+        }
+        const c = svgMap.viewBox.baseVal;
+        const from = [c.x, c.y, c.width, c.height];
+        const t0 = performance.now();
+        const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        (function step(now) {
+            const p = Math.min(1, (now - t0) / dur),
+                e = ease(p);
+            svgMap.setAttribute('viewBox', from.map((f, i) => f + (target[i] - f) * e).join(' '));
+            if (p < 1) vbAnim = requestAnimationFrame(step);
+        })(t0);
+    }
+
+    function gaugeHTML(v, label, cat, size, big, action) {
+        const c = kpiColor(v);
+        const click = action ?
+            `onclick="${action}" onkeydown="if(event.key==='Enter'){${action}}" role="button" tabindex="0" title="عرض التفاصيل"` :
+            cat ?
+            `onclick="loadRegionalData('${cat}')" onkeydown="if(event.key==='Enter')loadRegionalData('${cat}')" role="button" tabindex="0" title="عرض الجدول"` :
+            '';
+        return `<div class="kpi ${big ? 'kpi-big' : ''} ${cat || action ? 'is-link' : ''}" style="--c:${c}" ${click}>
+    <svg viewBox="0 0 100 100" width="${size}" height="${size}">
+    <circle cx="50" cy="50" r="47" class="kpi-ticks"/>
+    <circle cx="50" cy="50" r="38" class="kpi-track"/>
+    <circle cx="50" cy="50" r="38" class="kpi-bar" stroke="${c}"
+        stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}"
+        data-offset="${CIRC * (1 - v / 100)}" transform="rotate(-90 50 50)"/>
+    <text x="50" y="50" class="kpi-val"><tspan class="n" data-v="${v}">0</tspan><tspan class="kpi-pct" dx="1">%</tspan></text>
+    </svg><span class="kpi-label">${label}</span></div>`;
+    }
+
+    function animateKpis(el) {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            el.querySelectorAll('.kpi-bar').forEach(b => b.style.strokeDashoffset = b.dataset.offset);
+            el.querySelectorAll('.kpi-val .n').forEach(n => {
+                const to = +n.dataset.v;
+                if (reduceMotion) {
+                    n.textContent = to;
+                    return;
                 }
+                const t0 = performance.now(),
+                    d = 1000;
+                (function f(now) {
+                    const p = Math.min(1, (now - t0) / d);
+                    n.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+                    if (p < 1) requestAnimationFrame(f);
+                })(t0);
+            });
+        }));
+    }
+
+    function renderKpis(el, items, size, clickable) {
+        el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, clickable ? i.key : null, size)).join('');
+        animateKpis(el);
+    }
+
+    function renderNationalKpis() {
+        const general = currentMode === 'general';
+        let items;
+        if (general) {
+            items = GENERAL_SYSTEMS.map(([m, label]) => {
+                const vals = regionIds().map(id => modeAvg(m, id)).filter(v => v != null);
+                return vals.length ? { key: m, label, v: mean(vals) } : null;
+            }).filter(Boolean);
+        } else {
+            items = MODES[currentMode].cats.map((cat, idx) => {
+                const vals = regionIds()
+                    .filter(id => catHasData(currentMode, id, cat.key))
+                    .map(id => kpiStore[id]?.[idx])
+                    .filter(v => typeof v === 'number');
+                return vals.length ? { key: cat.key, label: cat.label, v: mean(vals) } : null;
+            }).filter(Boolean);
+        }
+        const total = mean(items.map(i => i.v));
+
+        const overall = $('overallKpi');
+        overall.innerHTML = gaugeHTML(total, 'الجاهزية العامة', null, 150, true);
+        animateKpis(overall);
+
+        const el = $('nationalKpis');
+        if (general) {
+            el.className = 'kpi-grid kpi-duo';
+            el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, null, 96, false, `setMode('${i.key}')`)).join('');
+            animateKpis(el);
+        } else {
+            el.className = 'kpi-grid';
+            renderKpis(el, items, 78, false);
+        }
+
+        const cnt = { ok: 0, mid: 0, crit: 0 };
+        regionIds().forEach(id => {
+            const v = regionAvg(id);
+            if (v != null) cnt[statusOf(v).k]++;
+        });
+        $('statusStrip').innerHTML = `
+            <div class="st ok"><b>${cnt.ok}</b><span>مناطق جاهزة</span></div>
+            <div class="st mid"><b>${cnt.mid}</b><span>تحتاج متابعة</span></div>
+            <div class="st crit"><b>${cnt.crit}</b><span>مناطق حرجة</span></div>`;
+    }
+
+    function renderActions(id) {
+        const cats = id ? activeCats(currentMode, id) : [];
+        let html = cats.map(c => `
+            <button class="action-btn" data-cat="${c.key}" onclick="loadRegionalData('${c.key}')">
+              <svg viewBox="0 0 24 24">${ICONS[c.icon] || ''}</svg><span>${c.title}</span><em></em>
+            </button>`).join('');
+        $('infoActions').innerHTML = html;
+    }
+
+    function renderRegionPanel(id) {
+        const general = currentMode === 'general';
+        const items = regionItems(id);
+        renderActions(id);
+        renderRegionHead(id);
+        $('infoActions').style.display = general ? 'none' : 'contents';
+        $('regionHint').textContent = !items.length ?
+            'لا توجد بيانات مسجّلة لهذه المنطقة.' :
+            general ? 'اضغط على النظام لعرض تفاصيله:' : 'اختر التصنيف لعرض الجدول:';
+        const el = $('regionKpis');
+        if (general) {
+            el.className = 'kpi-grid kpi-duo';
+            el.innerHTML = items.map(i => gaugeHTML(i.v, i.label, null, 96, false, `setMode('${i.key}')`)).join('');
+            animateKpis(el);
+        } else {
+            el.className = 'kpi-grid';
+            renderKpis(el, items, 74, true);
+        }
+    }
+
+    function renderRegionHead(id) {
+        const items = regionItems(id);
+        const avg = regionAvg(id);
+        if (!items.length || avg == null) {
+            $('regionOverall').innerHTML = `<div class="region-hero">
+            <div class="hero-text">
+              <span class="chip">لا توجد بيانات</span>
+              <p>لا توجد بيانات مسجّلة لهذه المنطقة في هذا العرض.</p>
+            </div></div>`;
+        } else {
+            const s = statusOf(avg);
+            const weak = items.reduce((m, i) => i.v < m.v ? i : m, items[0]);
+            $('regionOverall').innerHTML = `<div class="region-hero">
+            ${gaugeHTML(avg, 'الجاهزية العامة', null, 108, true)}
+            <div class="hero-text">
+              <span class="chip ${s.k}">${s.t}</span>
+              <p>أدنى مؤشر في المنطقة:<br><b>${esc(weak.label)}</b> بنسبة <b>${weak.v}%</b></p>
+            </div></div>`;
+            animateKpis($('regionOverall'));
+        }
+        $('regionCode').textContent = id;
+
+        document.querySelectorAll('.action-btn[data-cat]').forEach(b => {
+            b.classList.remove('is-active');
+            const d = regionalDataStore[id]?.[b.dataset.cat];
+            b.querySelector('em').textContent = Array.isArray(d) ? d.length : '0';
+        });
+    }
+
+    const mulberry32 = a => () => {
+        a |= 0;
+        a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+    const HUBS = {
+        SA01: [520, 482],
+        SA02: [285, 572],
+        SA03: [218, 408],
+        SA04: [700, 492],
+        SA05: [412, 388],
+        SA08: [340, 302],
+        SA07: [112, 292],
+        SA09: [428, 192],
+        SA10: [397, 776],
+        SA11: [545, 736],
+        BAHA: [338, 646],
+        SA13: [225, 198],
+        SA06: [410, 684]
+    };
+
+    function buildNationalNet() {
+        const hq = HUBS.SA01,
+            u = 1 / ppu();
+        let lines = '',
+            nodes = '';
+        Object.entries(HUBS).forEach(([id, [x, y]]) => {
+            const v = regionAvg(id);
+            const col = v == null ? null : statusOf(v).k;
+            if (id !== 'SA01') {
+                const dx = hq[0] - x,
+                    dy = hq[1] - y,
+                    len = Math.hypot(dx, dy) || 1,
+                    off = len * .12;
+                const cx = (x + hq[0]) / 2 - dy / len * off,
+                    cy = (y + hq[1]) / 2 + dx / len * off;
+                lines +=
+                    `<path class="link${v == null ? ' dim' : ''}" d="M${x} ${y}Q${cx} ${cy} ${hq[0]} ${hq[1]}"/>`;
             }
+            if (id === 'SA01') {
+                nodes +=
+                    `<circle class="ping hub" cx="${x}" cy="${y}" r="${(6.5 * u).toFixed(1)}"/><circle class="node hub ok" cx="${x}" cy="${y}" r="${(7.5 * u).toFixed(1)}"/>`;
+            } else if (col) {
+                nodes += (col === 'crit' ?
+                        `<circle class="ping crit" cx="${x}" cy="${y}" r="${(5 * u).toFixed(1)}"/>` : '') +
+                    `<circle class="node ${col}" cx="${x}" cy="${y}" r="${(5 * u).toFixed(1)}"/>`;
+            } else {
+                nodes += `<circle class="node off" cx="${x}" cy="${y}" r="${(4 * u).toFixed(1)}"/>`;
+            }
+        });
+        netNational.innerHTML = lines + nodes;
+    }
+
+    function buildRegionMesh(path) {
+        const id = path.id,
+            bb = path.getBBox(),
+            rnd = mulberry32(hash(id)),
+            rnd2 = mulberry32(hash(id + currentMode)),
+            v = regionAvg(id) || 60;
+        const pts = [],
+            pt = svgMap.createSVGPoint(),
+            minD = Math.max(bb.width, bb.height) / 7.5;
+        for (let i = 0; i < 4000 && pts.length < 18; i++) {
+            pt.x = bb.x + rnd() * bb.width;
+            pt.y = bb.y + rnd() * bb.height;
+            if (!path.isPointInFill(pt)) continue;
+            if (pts.some(p => Math.hypot(p.x - pt.x, p.y - pt.y) < minD)) continue;
+            pts.push({
+                x: pt.x,
+                y: pt.y
+            });
+        }
+        if (pts.length < 2) {
+            netRegion.innerHTML = '';
+            return;
+        }
+
+        const cx = bb.x + bb.width / 2,
+            cy = bb.y + bb.height / 2;
+        pts.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
+        pts.forEach((p, i) => {
+            const r = rnd2() * 100;
+            p.hub = i === 0;
+            p.s = p.hub ? 'ok' : r < v - 8 ? 'ok' : r < v + 18 ? 'mid' : 'crit';
+        });
+
+        const seen = new Set();
+        let lines = '';
+        pts.forEach((p, i) => {
+            const take = i === 0 ? 3 : 2;
+            pts.map((q, j) => ({
+                    j,
+                    d: Math.hypot(p.x - q.x, p.y - q.y)
+                }))
+                .filter(o => o.j !== i).sort((a, b) => a.d - b.d).slice(0, take)
+                .forEach(o => {
+                    const key = i < o.j ? i + '-' + o.j : o.j + '-' + i;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    const q = pts[o.j];
+                    lines +=
+                        `<line class="link" x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}"/>`;
+                });
+        });
+
+        const sc = Math.min((mapStage.clientWidth || 800) / (bb.width + 80), (mapStage.clientHeight || 600) / (bb
+            .height + 80)) || 1;
+        const R = Math.min(16, Math.max(3, 6.5 / sc));
+        const labels = {
+            ok: 'جاهزة',
+            mid: 'تحتاج متابعة',
+            crit: 'حرجة'
+        };
+        let nodes = '';
+        pts.forEach((p, i) => {
+            const nn = String(i + 1).padStart(2, '0');
+            const name = p.hub ? 'المحطة الرئيسية للمنطقة' : `محطة رقم ${nn}`;
+            const r = p.hub ? R * 1.5 : R;
+            if (p.hub || p.s === 'crit') nodes +=
+                `<circle class="ping ${p.hub ? 'hub' : p.s}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}"/>`;
+            nodes +=
+                `<circle class="node ${p.s}${p.hub ? ' hub' : ''}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" data-name="${name}" data-k="${p.s}" data-t="${labels[p.s]}"/>`;
+        });
+        netRegion.innerHTML = lines + nodes;
+    }
+
+    function toggleDetail(btn, rowIdx) {
+        const detailRowId = 'detail-' + rowIdx;
+        const existing = document.getElementById(detailRowId);
+        if (existing) {
+            existing.remove();
+            btn.textContent = 'التفاصيل';
+            return;
+        }
+        const data = regionalDataStore[currentRegionId]?.workshops || [];
+        const row = data[rowIdx];
+        if (!row) return;
+
+        const engineersList = Array.isArray(row.engineers) ? row.engineers : [];
+        const techniciansList = Array.isArray(row.technicians) ? row.technicians : [];
+        const maxRows = Math.max(engineersList.length, techniciansList.length, 1);
+
+        let bodyRows = '';
+        for (let i = 0; i < maxRows; i++) {
+            const engName = engineersList[i] ? `${i + 1}. ${esc(engineersList[i])}` : '';
+            const techName = techniciansList[i] ? `${i + 1}. ${esc(techniciansList[i])}` : '';
+            bodyRows += `<tr><td>${engName}</td><td>${techName}</td></tr>`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.id = detailRowId;
+        tr.className = 'detail-row';
+        tr.innerHTML = `<td colspan="4">
+    <table class="detail-inner-table">
+      <thead><tr>
+        <th>المهندسين (${esc(row.engineers_count)})</th>
+        <th>الفنيين (${esc(row.technicians_count)})</th>
+      </tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  </td>`;
+        btn.closest('tr').insertAdjacentElement('afterend', tr);
+        btn.textContent = 'إخفاء';
+    }
+
+    const emptyRow = n => `<tr><td colspan="${n}" class="empty">لا توجد بيانات مسجّلة لهذا التصنيف حتى الآن</td></tr>`;
+
+    const ASSET_CATS = ['repeaters', 'antennas', 'exchanges'];
+
+    function statusBadge(row) {
+        const allowed = ['active', 'faulty', 'maintenance', 'retired'];
+        const key = allowed.includes(row.status) ? row.status : 'none';
+        return `<span class="status-badge status-${key}">${esc(row.status_label || 'غير محدد')}</span>`;
+    }
+
+    function imgCell(row) {
+        if (!row.image) return '—';
+        const src = esc(row.image);
+        return `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" class="asset-thumb" alt=""></a>`;
+    }
+
+    function assetCells(row) {
+        return `<td>${esc(row.serial_number || '—')}</td><td>${statusBadge(row)}</td><td>${imgCell(row)}</td>`;
+    }
+
+    function calcTotal(category, data) {
+        if (!Array.isArray(data)) return 0;
+        switch (category) {
+            case 'workshops':
+                return data.reduce((s, r) =>
+                    s + (Number(r.engineers_count) || 0) + (Number(r.technicians_count) || 0), 0);
+            case 'exchanges':
+                return data.filter(r => r.type).length;
+            case 'devices':
+                return data.length;
+            default:
+                return data.reduce((s, r) =>
+                    s + (r.count != null && r.count !== '' ? (Number(r.count) || 0) : 1), 0);
+        }
+    }
+
+    const cntOf = r => r.count ?? (currentMode === 'security' ? 1 : '');
+
+    function readinessTable(id, cat) {
+        const r = getReadiness(cat, id);
+        const t = r.total || {},
+            m = r.mobile || {},
+            f = r.fixed || {};
+        const pct = t.count ? Math.round((t.working / t.count) * 100) : 0;
+        const cls = pct >= 80 ? 'ok-t' : pct >= 60 ? 'mid-t' : 'crit-t';
+        const reports = x => (Number(x.partial) || 0) + (Number(x.full) || 0);
+        const n = v => esc(v ?? 0);
+
+        return `<table class="dt">
+          <thead>
+            <tr>
+              <th rowspan="2">المنطقة</th>
+              <th colspan="2" rowspan="2">القوة</th>
+              <th rowspan="2">يعمل</th>
+              <th rowspan="2">متعطل</th>
+              <th rowspan="2">نسبة الجاهزية</th>
+              <th colspan="2">عدد البلاغات</th>
+            </tr>
+            <tr>
+                <th class="c">عطل جزئي</th>
+                <th class="c">عطل كلي</th>
+            </tr>
+
+          </thead>
+          <tbody>
+            <tr>
+              <td rowspan="3" class="grp">${esc(regionNames[id])}</td>
+              <td>عدد الأنظمة</td><td class="num">${n(t.count)}</td>
+              <td class="num">${n(t.working)}</td><td class="num">${n(t.faulty)}</td>
+              <td rowspan="3" class="num ${cls}">${pct}%</td>
+              <td colspan="2" class="num">${reports(m) + reports(f)}</td>
+            </tr>
+            <tr>
+              <td>متحرك</td><td class="num">${n(m.count)}</td>
+              <td class="num">${n(m.working)}</td><td class="num">${n(m.faulty)}</td>
+              <td class="num">${n(m.partial)}</td><td class="num">${n(m.full)}</td>
+            </tr>
+            <tr>
+              <td>ثابت</td><td class="num">${n(f.count)}</td>
+              <td class="num">${n(f.working)}</td><td class="num">${n(f.faulty)}</td>
+              <td class="num">${n(f.partial)}</td><td class="num">${n(f.full)}</td>
+            </tr>
+          </tbody>
+        </table>`;
+    }
+
+    function loadRegionalData(category) {
+        if (!currentRegionId || currentMode === 'general') return;
+
+        const data = regionalDataStore[currentRegionId]?.[category] || [];
+        currentCategory = category;
+        hideTip();
+
+        mapStage.classList.add('hidden-element');
+        dataView.style.display = 'flex';
+        $('dvTitle').textContent = CAT_TITLES[category];
+        $('dvCount').textContent = data.length + ' سجل';
+        $('dvTotal').textContent = 'الإجمالي: ' + calcTotal(category, data);
+        $('dvSearch').value = '';
+        mapTitle.innerText = regionNames[currentRegionId];
+        document.querySelectorAll('.action-btn[data-cat]').forEach(b => b.classList.toggle('is-active', b.dataset
+            .cat === category));
+        updateCrumbs();
+
+        // جدول الجاهزية يظهر فوق السجلات في ساجم / زالي / فلير فقط
+       // الوضع الأمني: جدول الجاهزية فقط بدون جدول السجلات
+if (currentMode === 'security') {
+    readinessContainer.innerHTML = readinessTable(currentRegionId, category);
+    readinessContainer.style.display = 'block';
+    dataTableContainer.style.display = 'none';
+    devicesContainer.style.display = 'none';
+    $('dvCount').textContent = '';
+    $('dvTotal').textContent = '';
+    return;
+}
+readinessContainer.style.display = 'none';
+
+        if (category === 'devices') {
+            dataTableContainer.style.display = 'none';
+            renderDevices(data);
+            return;
+        }
+        devicesContainer.style.display = 'none';
+        dataTableContainer.style.display = 'block';
+
+        if (category === 'exchanges') {
+            tableHeader.innerHTML =
+                `<tr><th>النوع</th><th>الإصدار</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
+            tableBody.innerHTML = data.length ?
+                data.map(row => `<tr>
+            <td>${esc(row.type)}</td><td>${esc(row.sw)}</td><td>${esc(row.location)}</td>
+            ${assetCells(row)}
+        </tr>`).join('') :
+                emptyRow(6);
+
+        } else if (category === 'workshops') {
+            tableHeader.innerHTML = `<tr><th>اسم الورشة</th><th>الموقع</th><th>عدد الموظفين</th><th>التفاصيل</th></tr>`;
+            tableBody.innerHTML = data.length ?
+                data.map((row, i) => `<tr>
+            <td>${esc(row.name)}</td>
+            <td>${esc(row.location)}</td>
+            <td>${(Number(row.engineers_count) || 0) + (Number(row.technicians_count) || 0)}</td>
+            <td><button class="expand-btn" onclick="toggleDetail(this, ${i})">التفاصيل</button></td>
+        </tr>`).join('') :
+                emptyRow(4);
+
+        } else if (ASSET_CATS.includes(category) ||
+            (category !== 'fiberOptics' && data.some(r => r.serial_number || r.status))) {
+            tableHeader.innerHTML =
+                `<tr><th>النوع</th><th>العدد</th><th>الموقع</th><th>الرقم التسلسلي</th><th>الحالة</th><th>الصورة</th></tr>`;
+            tableBody.innerHTML = data.length ?
+                data.map(row => `<tr>
+            <td>${esc(row.item ?? row.name)}</td>
+            <td>${esc(cntOf(row))}</td>
+            <td>${esc(row.loc ?? row.location)}</td>
+            ${assetCells(row)}
+        </tr>`).join('') :
+                emptyRow(6);
+
+        } else {
+            tableHeader.innerHTML = `<tr><th>النوع</th><th>العدد</th><th>الموقع</th></tr>`;
+            tableBody.innerHTML = data.length ?
+                data.map(row => `<tr>
+            <td>${esc(row.item ?? row.name)}</td>
+            <td>${esc(cntOf(row))}</td>
+            <td>${esc(row.loc ?? row.location)}</td>
+        </tr>`).join('') :
+                emptyRow(3);
+        }
+    }
+
+    const DEVICE_PLACEHOLDER = `<svg class="ph" width="56" height="56" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V4M16 7V4"/>
+    <circle cx="12" cy="13" r="3"/></svg>`;
+
+    const STATUS_COLORS = {
+        active: '#2ee6a6',
+        faulty: '#ff5c6c',
+        maintenance: '#ffb224',
+        retired: '#8890b5'
+    };
+
+    function renderDevices(data) {
+        const cards = data.map(d => {
+            const name = d.name ?? d.item ?? '—';
+            const location = d.location ?? d.loc ?? '—';
+            const serial = d.serial_number ?? d.serial ?? '—';
+            const hasReadiness = d.readiness !== null && d.readiness !== undefined && d.readiness !== '';
+            const pct = hasReadiness ? Math.max(0, Math.min(100, Number(d.readiness) || 0)) : null;
+
+            const color = STATUS_COLORS[d.status] || (pct !== null ? kpiColor(pct) : '#8890b5');
+            const badge = d.status_label || (pct !== null ? statusOf(pct).t : 'غير محدد');
+
+            const accessories = Array.isArray(d.accessories) ?
+                d.accessories :
+                (d.accessories ? String(d.accessories).split(',') : []);
+
+            return `
+    <div class="device-card" style="border-top-color:${color}">
+      <div class="device-img">
+        ${DEVICE_PLACEHOLDER}
+        ${d.image ? `<img src="${esc(d.image)}" alt="${esc(name)}" loading="lazy" onerror="this.remove()">` : ''}
+        <span class="device-badge" style="background:${color}">${esc(badge)}</span>
+      </div>
+      <div class="device-body">
+        <h4 class="device-title">${esc(name)}</h4>
+        <div class="device-info">
+
+          <div><span>الرقم التسلسلي</span><span>${esc(serial)}</span></div>
+          <div><span>الموقع</span><span>${esc(location)}</span></div>
+          ${d.count != null ? `<div><span>العدد</span><span>${esc(d.count)}</span></div>` : ''}
+        </div>
+        ${accessories.length ? `<div class="device-chips">${accessories.map(a => `<small>${esc(String(a).trim())}</small>`).join('')}</div>` : ''}
+        ${pct !== null ? `
+            <div class="device-ready-top"><span>الجاهزية</span><span style="color:${color}">${pct}%</span></div>
+            <div class="device-ready-track">
+              <div class="device-ready-bar" style="background:${color}" data-w="${pct}"></div>
+            </div>` : ''}
+      </div>
+    </div>`;
+        }).join('');
+
+        devicesContainer.innerHTML = data.length ?
+            `<div class="devices-grid">${cards}</div>` :
+            '<p class="dv-empty">لا توجد أجهزة مسجّلة لهذه المنطقة حتى الآن</p>';
+        devicesContainer.style.display = 'block';
+
+        requestAnimationFrame(() => requestAnimationFrame(() =>
+            devicesContainer.querySelectorAll('.device-ready-bar').forEach(b => b.style.width = b.dataset.w +
+                '%')));
+    }
+
+    $('dvSearch').addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        if (currentCategory === 'devices') {
+            devicesContainer.querySelectorAll('.device-card').forEach(c => {
+                c.style.display = c.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+            return;
+        }
+        tableBody.querySelectorAll('tr:not(.detail-row)').forEach(r => {
+            const hit = r.textContent.toLowerCase().includes(q);
+            r.style.display = hit ? '' : 'none';
+            const nx = r.nextElementSibling;
+            if (nx && nx.classList.contains('detail-row')) nx.style.display = hit ? '' : 'none';
+        });
+    });
+
+    function showRegionMap() {
+        dataView.style.display = 'none';
+        readinessContainer.style.display = 'none';
+        mapStage.classList.remove('hidden-element');
+        currentCategory = null;
+        document.querySelectorAll('.action-btn[data-cat]').forEach(b => b.classList.remove('is-active'));
+        mapTitle.innerText = regionNames[currentRegionId] || 'خريطة المناطق الإدارية';
+        updateCrumbs();
+    }
+
+    paths.forEach(path => {
+        if (path.classList.contains('no-click') || !path.id) return;
+        path.classList.add('region');
+        const v = regionAvg(path.id);
+        if (v != null) path.style.setProperty('--rc', kpiColor(v));
+        path.setAttribute('tabindex', '0');
+        path.setAttribute('role', 'button');
+        path.setAttribute('aria-label', path.getAttribute('name'));
+
+        const open = function() {
+            const bbox = this.getBBox();
+            currentRegionId = this.id;
             updateReportLinks();
+            currentCategory = null;
+            setViewBox([bbox.x - 40, bbox.y - 40, bbox.width + 80, bbox.height + 80], 750);
+            paths.forEach(p => {
+                p.classList.add('hidden-region');
+                p.classList.remove('active-region');
+            });
+            this.classList.remove('hidden-region');
+            this.classList.add('active-region');
+
+            mapTitle.innerText = this.getAttribute('name');
+            mapSub.textContent = 'تظهر النقاط حالة محطات المنطقة، مرّر المؤشر فوق أي نقطة';
+            $('defaultContent').style.display = 'none';
+            $('regionDetail').style.display = 'flex';
+            $('regionName').innerText = this.getAttribute('name');
+            resetMapBtn.style.display = 'flex';
+            renderRegionPanel(this.id);
+            dataView.style.display = 'none';
+            readinessContainer.style.display = 'none';
+            mapStage.classList.remove('hidden-element');
+
+            buildRegionMesh(this);
+            netNational.classList.add('is-off');
+            netRegion.classList.remove('is-off');
+            netRegion.classList.add('interactive');
+            mapLabels.classList.add('is-off');
             hideTip();
             updateCrumbs();
-        }
-
-        $('modeSwitch').addEventListener('click', e => {
-            const b = e.target.closest('.seg-btn');
-            if (b) setMode(b.dataset.mode);
+        };
+        path.addEventListener('click', open);
+        path.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                open.call(this);
+            }
         });
+    });
 
-        setMode('comms');
-        fitLabels();
-
-        let rzTimer;
-        addEventListener('resize', () => {
-            clearTimeout(rzTimer);
-            rzTimer = setTimeout(() => {
-                fitLabels();
-                if (mapStage.classList.contains('hidden-element')) return;
-                buildNationalNet();
-                if (currentRegionId) buildRegionMesh(document.getElementById(currentRegionId));
-            }, 150);
-        });
-
-        const boot = $('boot');
-
-        function finishBoot() {
-            if (booted) return;
-            booted = true;
-            boot.classList.add('done');
-            renderNationalKpis();
-            setTimeout(() => boot.remove(), 700);
+    svgMap.addEventListener('pointermove', e => {
+        const t = e.target;
+        if (t.classList.contains('node') && t.dataset.name) {
+            showTip(`<b>${t.dataset.name}</b><span class="${t.dataset.k}">الحالة: ${t.dataset.t}</span>`, e);
+            return;
         }
-        boot.addEventListener('click', finishBoot);
-        if (reduceMotion) finishBoot();
-        else setTimeout(finishBoot, 2000);
-    </script>
+        if (t.classList.contains('region') && !t.classList.contains('active-region') && !t.classList.contains(
+                'hidden-region')) {
+            const v = regionAvg(t.id);
+            showTip(`<b>${esc(t.getAttribute('name'))}</b>
+      ${v == null ? '' : `<span>الجاهزية العامة <strong class="${statusOf(v).k}">${v}%</strong></span>`}
+      <small>اضغط لعرض التفاصيل</small>`, e);
+            return;
+        }
+        hideTip();
+    });
+    svgMap.addEventListener('pointerleave', hideTip);
+    svgMap.addEventListener('pointerup', e => {
+        if (e.pointerType === 'touch') setTimeout(hideTip, 1800);
+    });
+
+    function resetAll() {
+        setViewBox([0, 0, 1000, 824], 650);
+        mapStage.classList.remove('hidden-element');
+        dataView.style.display = 'none';
+        readinessContainer.style.display = 'none';
+        mapTitle.innerText = "خريطة المناطق الإدارية";
+        mapSub.textContent = 'اضغط على أي منطقة لتكبيرها وعرض بياناتها';
+        paths.forEach(p => p.classList.remove('hidden-region', 'active-region'));
+        $('defaultContent').style.display = 'block';
+        $('regionDetail').style.display = 'none';
+        resetMapBtn.style.display = 'none';
+
+        netRegion.classList.add('is-off');
+        netRegion.classList.remove('interactive');
+        setTimeout(() => {
+            if (!currentRegionId) netRegion.innerHTML = '';
+        }, 600);
+        netNational.classList.remove('is-off');
+        mapLabels.classList.remove('is-off');
+        currentRegionId = null;
+        currentCategory = null;
+        hideTip();
+        updateCrumbs();
+    }
+
+    resetMapBtn.addEventListener('click', resetAll);
+    $('dvBack').addEventListener('click', showRegionMap);
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (dataView.style.display === 'flex') showRegionMap();
+        else if (currentRegionId) resetAll();
+    });
+
+    function buildTicker() {
+        const track = $('tickerTrack');
+        if (!track) return;
+        const sources = currentMode === 'general' ? ['comms', 'security'] : [currentMode];
+        const items = [];
+        sources.forEach(m => {
+            Object.keys(MODES[m].kpi).forEach(id => {
+                if (!regionNames[id]) return;
+                activeCats(m, id).forEach(c => {
+                    const v = MODES[m].kpi[id][c.idx];
+                    if (typeof v === 'number' && v < 70) items.push({ id, v, cat: c.label });
+                });
+            });
+        });
+        items.sort((a, b) => a.v - b.v);
+        const top = items.slice(0, 14);
+        const html = top.map(o => {
+            const k = o.v < 60 ? 'crit' : 'mid';
+            return `<span class="ti ${k}"><i></i>${k === 'crit' ? 'حرج' : 'متابعة'}: ${esc(o.cat)} في ${esc(regionNames[o.id])} <b>${o.v}%</b></span>`;
+        }).join('');
+        track.innerHTML = html + html;
+        track.style.animationDuration = Math.max(40, top.length * 7) + 's';
+    }
+
+    const REPORTS = {
+        comms: {
+            all: @json(route('regions.report.all')),
+            region: id => `/region/${id}/report`,
+            allLabel: 'تقرير الاتصالات (جميع المناطق)',
+            regionLabel: 'تحميل تقرير الاتصالات'
+        },
+        security: {
+            all: @json(route('regions.security.report.all')),
+            region: id => `/region/${id}/security-report`,
+            allLabel: 'تقرير الأنظمة الأمنية (جميع المناطق)',
+            regionLabel: 'تحميل تقرير الأنظمة الأمنية'
+        }
+    };
+
+    function updateReportLinks() {
+        const r = REPORTS[currentMode];
+        if (!r) return;
+        const all = $('allReportBtn');
+        if (all) {
+            all.href = r.all;
+            $('allReportLabel').textContent = r.allLabel;
+        }
+        const rb = $('downloadReportBtn');
+        if (rb) {
+            rb.href = currentRegionId ? r.region(currentRegionId) : '#';
+            $('regionReportLabel').textContent = r.regionLabel;
+        }
+    }
+
+    function setMode(key) {
+        if (!MODES[key]) return;
+        currentMode = key;
+        kpiStore = MODES[key].kpi;
+        regionalDataStore = MODES[key].data;
+        CURRENT_CATS = MODES[key].cats;
+        KPI_CATS = key === 'general' ? GENERAL_SYSTEMS : CURRENT_CATS.map(c => [c.key, c.label]);
+        CAT_TITLES = Object.fromEntries(CURRENT_CATS.map(c => [c.key, c.title]));
+
+        document.querySelectorAll('.seg-btn').forEach(b => {
+            const on = b.dataset.mode === key;
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-selected', on);
+        });
+        $('modeName').textContent = MODES[key].title;
+        mapStage.style.setProperty('--sw', MODES[key].sweep);
+
+        document.querySelectorAll('#features path.region').forEach(p => {
+            const v = regionAvg(p.id);
+            if (v != null) p.style.setProperty('--rc', kpiColor(v));
+            else p.style.removeProperty('--rc');
+        });
+        buildNationalNet();
+        buildTicker();
+        if (booted) renderNationalKpis();
+
+        if (currentRegionId) {
+            renderRegionPanel(currentRegionId);
+            buildRegionMesh(document.getElementById(currentRegionId));
+            if (dataView.style.display === 'flex') {
+                if (key === 'general') showRegionMap();
+                else if (currentCategory && CAT_TITLES[currentCategory] && catHasData(key, currentRegionId,
+                        currentCategory)) loadRegionalData(currentCategory);
+                else showRegionMap();
+            }
+        }
+        updateReportLinks();
+        hideTip();
+        updateCrumbs();
+    }
+
+    $('modeSwitch').addEventListener('click', e => {
+        const b = e.target.closest('.seg-btn');
+        if (b) setMode(b.dataset.mode);
+    });
+
+    setMode('comms');
+    fitLabels();
+
+    let rzTimer;
+    addEventListener('resize', () => {
+        clearTimeout(rzTimer);
+        rzTimer = setTimeout(() => {
+            fitLabels();
+            if (mapStage.classList.contains('hidden-element')) return;
+            buildNationalNet();
+            if (currentRegionId) buildRegionMesh(document.getElementById(currentRegionId));
+        }, 150);
+    });
+
+    const boot = $('boot');
+
+    function finishBoot() {
+        if (booted) return;
+        booted = true;
+        boot.classList.add('done');
+        renderNationalKpis();
+        setTimeout(() => boot.remove(), 700);
+    }
+    boot.addEventListener('click', finishBoot);
+    if (reduceMotion) finishBoot();
+    else setTimeout(finishBoot, 2000);
+</script>
+
 
 </body>
 

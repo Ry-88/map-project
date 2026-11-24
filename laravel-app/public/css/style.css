@@ -29,7 +29,7 @@
     @media (min-width: 992px) and (max-height: 699px) {
     body { height: auto; overflow: auto; }
     }
-    
+
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; }
 
@@ -443,7 +443,13 @@
 .brand h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .region-hero { flex-wrap: wrap; }
 .map-stage svg#saudiMap { touch-action: manipulation; }
-
+.dt .num { text-align: center; font-variant-numeric: tabular-nums; }
+.dt .grp { font-weight: 700; background: rgba(255,255,255,.04); }
+.dt .ok-t { color: #2ee6a6; font-weight: 700; }
+.dt .crit-t { color: #ff5c6c; font-weight: 700; }
+.dt .mid-t { color: #ffb224; font-weight: 700; }
+.dt th.c, .dt td.c { text-align: center; }
+.readiness-box { flex-shrink: 0; overflow-x: auto; margin-bottom: 14px; }
 /* ---- شاشات عريضة جداً ---- */
 @media (min-width: 1700px) {
   .app { grid-template-columns: 460px minmax(0, 1fr); gap: 20px; }
